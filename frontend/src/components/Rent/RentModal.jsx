@@ -19,7 +19,7 @@ const RentModal = ({ isOpen, setIsOpen }) => {
         name: "レンチA",
         id: "RN-0001-A",
         state: "good",
-        lastRent: { start: "", end: "" },
+        lastRent: { start: new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-'), end: "" },
         lastInspectionDate: "2024-06-01",
     })
 
