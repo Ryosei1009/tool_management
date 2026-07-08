@@ -88,7 +88,7 @@ const DetailModal = ({ isOpen, setIsOpen }) => {
                                                 <span className="w-16 text-xs">状態</span>
                                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border font-bold">
                                                     <span className={`w-3 h-3 rounded-full ${tool.state === 'good' ? 'bg-green-500' : tool.state === 'bad' ? 'bg-yellow-500' : 'bg-red-500'}`}></span>
-                                                    <select name="toolState" id="toolState" value={tool.state} onChange={(e) => setToolState(e.target.value)} className="bg-base text-sm">
+                                                    <select name="toolState" id="toolState" value={tool.state} onChange={(e) => setTool({ ...tool, state: e.target.value })} className="bg-base text-sm">
                                                         <option value="good">良好</option>
                                                         <option value="bad">不良</option>
                                                         <option value="broken">破損</option>
@@ -99,7 +99,7 @@ const DetailModal = ({ isOpen, setIsOpen }) => {
                                             <div className="flex items-baseline gap-3 pb-0.5">
                                                 <span className="w-16 text-xs">点検日</span>
                                                 <span className="font-semibold">
-                                                    <input type="date" value={tool.lastInspectionDate} className="w-32 px-2 py-1 rounded-lg border border-line text-sm" />
+                                                    <input onChange={(e) => setTool({ ...tool, lastInspectionDate: e.target.value })} type="date" value={tool.lastInspectionDate} className="w-32 px-2 py-1 rounded-lg border border-line text-sm" />
                                                 </span>
                                             </div>
                                         </div>
