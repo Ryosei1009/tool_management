@@ -4,6 +4,7 @@ import MapModal from '../Util/MapModal'
 import { getMapName } from '../../utils/map'
 import ConfirmModal from '../Util/ConfirmModal'
 import { getToolState } from '../../utils/toolState'
+import SelectUserModal from '../Util/SelectUserModa'
 
 const RenewModal = ({ isOpen, setIsOpen }) => {
     const [isMapOpen, setIsMapOpen] = useState(false)
@@ -15,6 +16,8 @@ const RenewModal = ({ isOpen, setIsOpen }) => {
             window.location.reload()
         }
     }, [isConfirmed])
+    const[isPassModalOpen, setIsPassModalOpen] = useState(false)
+
     const [tool, setTool] = useState({
         name: "レンチA",
         id: "RN-0001-A",
@@ -128,7 +131,10 @@ const RenewModal = ({ isOpen, setIsOpen }) => {
                                     </div>
                                 </div>
 
-                                <div className="px-4.5 pt-3.5 pb-4.5">
+                                <div className="flex gap-4 px-4.5 pt-3.5 pb-4.5">
+                                    <button onClick={() => setIsPassModalOpen(true)} className="w-full py-3.5 rounded-lg font-extrabold bg-main text-base">
+                                        渡す
+                                    </button>
                                     <button onClick={() => setIsConfirmOpen(true)} className="w-full py-3.5 rounded-lg font-extrabold bg-main text-base">
                                         更新
                                     </button>
@@ -148,6 +154,7 @@ const RenewModal = ({ isOpen, setIsOpen }) => {
                     setTool={setTool}
                 />
                 <ConfirmModal isOpen={isConfirmOpen} setIsOpen={setIsConfirmOpen} text="本当に更新しますか？" yesText="はい" noText="いいえ" setBoolean={setIsConfirmed} borderColor="border-main" />
+                <SelectUserModal isOpen={isPassModalOpen} setIsOpen={setIsPassModalOpen} />
             </Dialog>
         </Transition>
     )
