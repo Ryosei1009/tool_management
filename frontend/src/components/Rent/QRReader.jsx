@@ -84,7 +84,7 @@ const QRReader = ({ setResult }) => {
 
 	return (
 		<>
-			<div className='flex justify-center items-center h-full'>
+			<div className='-mt-12 flex justify-center items-center h-full'>
 				{error ? (
 					<div className='max-w-xs px-6 text-center text-sub font-semibold'>
 						{error}

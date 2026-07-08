@@ -17,6 +17,9 @@ const Rent = () => {
         <>
         <div className={`flex items-center h-screen w-screen`}>
             <div className={`w-1/2 bg-base h-full pb-24`}>
+                <div className="text-6xl font-bold text-center pt-8">
+                    工具を借りる
+                </div>
                 <QRReader setResult={setResult} />
             </div>
             <div className={`w-1/2 bg-base h-full border-l border-line pb-24`}>

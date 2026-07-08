@@ -106,6 +106,9 @@ const RentList = ({ items = sampleRentItems, onReturn, onRenew }) => {
         <>
             <div className="flex items-start justify-center min-h-screen w-screen bg-base pb-24">
                 <div className="w-full max-w-5xl px-6 pt-8">
+                    <div className="text-6xl font-bold text-center pb-8">
+                        借りているものリスト
+                    </div>
                     <SearchBar keyword={keyword} onChange={setKeyword} />
                     <div className="flex flex-col gap-5">
                         {filtered.map((item, i) => (
