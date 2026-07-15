@@ -2,14 +2,25 @@ import jsQR from 'jsqr'
 import React, { useEffect, useRef, useState } from 'react'
 import QRModal from './QRModal'
 
-const QRReader = ({ setResult }) => {
+// isScanning が true の間だけQRスキャンを行う。
+// 借りるモーダルが開いている間は false になり、閉じると true に戻って再開する。
+const QRReader = ({ onScan, isScanning = true }) => {
 	const videoRef = useRef(null)
 	const canvasRef = useRef(null)
-	const rafRef = useRef(null)
-	const scanCounterRef = useRef(0)
+	const timerRef = useRef(null)
+	const loopRunningRef = useRef(false) // スキャンループの多重起動防止
+	const scanningRef = useRef(isScanning) // 最新の isScanning をループ内から参照
+	const armedRef = useRef(true) // 次の検出でトリガーしてよいか
+	const lastCodeRef = useRef(null) // 直前に読み取ったコード
 	const [error, setError] = useState('')
 	const [isModalOpen, setIsModalOpen] = useState(false)
 
+	// 最新の isScanning をループ内から参照できるよう保持
+	useEffect(() => {
+		scanningRef.current = isScanning
+	}, [isScanning])
+
+	// カメラの初期化（マウント時に一度だけ）
 	useEffect(() => {
 		const constraints = {
 			video: {
@@ -30,11 +41,11 @@ const QRReader = ({ setResult }) => {
 		navigator.mediaDevices
 			.getUserMedia(constraints)
 			.then((stream) => {
-				// デバイスのカメラにアクセスすることに成功したら、video要素にストリームをセットする
+				// カメラにアクセスできたら、video要素にストリームをセットしてスキャン開始
 				if (videoRef.current) {
 					videoRef.current.srcObject = stream
 					videoRef.current.play()
-					scanQrCode()
+					startScan()
 				}
 			})
 			.catch((err) => {
@@ -44,20 +55,42 @@ const QRReader = ({ setResult }) => {
 
 		const currentVideoRef = videoRef.current
 
-		// コンポーネントがアンマウントされたら、カメラのストリームを停止する
+		// アンマウント時にスキャンを止め、カメラのストリームを停止する
 		return () => {
-			if (rafRef.current) {
-				cancelAnimationFrame(rafRef.current)
+			if (timerRef.current) {
+				clearTimeout(timerRef.current)
 			}
+			loopRunningRef.current = false
 			if (currentVideoRef && currentVideoRef.srcObject) {
 				const stream = currentVideoRef.srcObject
-				const tracks = stream.getTracks()
-				tracks.forEach((track) => track.stop())
+				stream.getTracks().forEach((track) => track.stop())
 			}
 		}
 	}, [])
 
+	// isScanning が true になったら（＝モーダルが閉じたら）スキャンを再開する
+	useEffect(() => {
+		if (isScanning) {
+			startScan()
+		}
+	}, [isScanning])
+
+	// スキャンループを開始（多重起動・カメラ未準備・停止中は何もしない）
+	const startScan = () => {
+		if (loopRunningRef.current) return
+		if (!videoRef.current?.srcObject) return
+		if (!scanningRef.current) return
+		loopRunningRef.current = true
+		scanQrCode()
+	}
+
 	const scanQrCode = () => {
+		// 停止指示が出ていればループを終える
+		if (!scanningRef.current) {
+			loopRunningRef.current = false
+			return
+		}
+
 		const canvas = canvasRef.current
 		const video = videoRef.current
 		if (canvas && video) {
@@ -71,15 +104,25 @@ const QRReader = ({ setResult }) => {
 					inversionAttempts: 'dontInvert',
 				})
 				if (qrCodeData) {
-					// スキャンされた内容を確認する
-					setResult(qrCodeData.data)
-					setIsModalOpen(false)
-					console.log('QR Code Data:', qrCodeData.data)
-					return
+					const code = qrCodeData.data
+					// 同じQRが写り続けている間の即再オープンを防ぐ。
+					// 一度画面から外れて armed が戻るか、別のコードなら再トリガー。
+					if (armedRef.current || code !== lastCodeRef.current) {
+						lastCodeRef.current = code
+						armedRef.current = false
+						loopRunningRef.current = false
+						setIsModalOpen(false)
+						console.log('QR Code Data:', code)
+						onScan(code)
+						return
+					}
+				} else {
+					// QRが画面から外れたら、次の検出で再びトリガーできるようにする
+					armedRef.current = true
 				}
-				setTimeout(scanQrCode, 1000 / 30)
 			}
 		}
+		timerRef.current = setTimeout(scanQrCode, 1000 / 30)
 	}
 
 	return (
