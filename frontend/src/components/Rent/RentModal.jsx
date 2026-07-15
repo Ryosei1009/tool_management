@@ -91,7 +91,7 @@ const RentModal = ({ isOpen, setIsOpen }) => {
                                         </div>
                                     </div>
 
-                                    <div className="relative aspect-square h-108 pt-4 pr-6 w-full">
+                                    <div className="relative aspect-square h-96 pt-4 pr-6 w-full">
                                         <div
                                             onClick={() => setIsMapOpen(true)}
                                             className="relative h-full w-full cursor-pointer overflow-hidden rounded-xl border border-main"
@@ -114,12 +114,18 @@ const RentModal = ({ isOpen, setIsOpen }) => {
                                             </span>
                                         </div>
                                         <div className="flex items-baseline gap-3 mt-3 pb-2.5 border-b border-dashed">
-                                            <span className="w-16 text-xs">
+                                            <span className="w-20 text-xs">
                                                 場所：
                                             </span>
                                             <span className="font-semibold">
                                                 {getMapName(tool.pin?.x, tool.pin?.y)}
                                             </span>
+                                        </div>
+                                        <div className="flex items-baseline gap-3 mt-3 pb-2.5 border-b border-dashed">
+                                            <span className="w-20 text-xs">
+                                                貸し出し予約：
+                                            </span>
+                                            <input type="checkbox" checked={tool.reserved} onChange={(e) => setTool({...tool, reserved: e.target.checked})} className="w-4 h-4" />
                                         </div>
                                     </div>
                                 </div>
