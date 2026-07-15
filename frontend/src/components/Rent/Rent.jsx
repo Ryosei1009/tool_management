@@ -23,7 +23,7 @@ const Rent = () => {
                 </div>
                 <QRReader setResult={setResult} />
             </div>
-            <div className={`w-1/2 bg-base border-l border-line`}>
+            <div className={`w-1/2 pb-24 bg-base border-l border-line`}>
                 <ToolSearch setResult={setResult} />
             </div>
         </div>

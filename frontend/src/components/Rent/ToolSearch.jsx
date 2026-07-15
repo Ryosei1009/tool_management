@@ -39,7 +39,7 @@ const ToolSearch = ({ setResult, tools = sampleTools }) => {
       </div>
 
       {/* 検索結果リスト */}
-      <div className="max-h-[70vh] flex w-full max-w-md flex-1 flex-col gap-4 overflow-y-auto pb-24">
+      <div className="max-h-[65vh] flex w-full max-w-md flex-1 flex-col gap-4 overflow-y-auto">
         {filtered.length === 0 ? (
           <p className="pt-8 text-center text-sub font-semibold">
             該当する工具がありません
