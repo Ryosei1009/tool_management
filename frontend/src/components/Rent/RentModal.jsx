@@ -4,6 +4,7 @@ import MapModal from '../Util/MapModal'
 import { getMapName } from '../../utils/map'
 import ConfirmModal from '../Util/ConfirmModal'
 import { getToolState } from '../../utils/toolState'
+import { buildRentTool } from '../../utils/tools'
 
 const RentModal = ({ isOpen, setIsOpen }) => {
     const [isMapOpen, setIsMapOpen] = useState(false)
@@ -15,13 +16,13 @@ const RentModal = ({ isOpen, setIsOpen }) => {
             window.location.reload()
         }
     }, [isConfirmed])
-    const [tool, setTool] = useState({
-        name: "レンチA",
-        id: "RN-0001-A",
-        state: "good",
-        lastRent: { start: new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-'), end: "" },
-        lastInspectionDate: "2024-06-01",
-    })
+    // QR/検索で得たID（toolId）から該当する工具を読み込む
+    const [tool, setTool] = useState(() => buildRentTool(toolId))
+    useEffect(() => {
+        if (toolId) {
+            setTool(buildRentTool(toolId))
+        }
+    }, [toolId])
 
     return (
         <Transition appear show={isOpen} as={Fragment}>
@@ -51,13 +52,13 @@ const RentModal = ({ isOpen, setIsOpen }) => {
                             <div className="w-full max-w-5xl bg-base border-main border-4 rounded-2xl overflow-hidden fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/3">
                                 <div className={`flex items-center justify-between px-4 py-4 border-b`}>
                                     <span className="text-lg font-semibold">工具貸し出し</span>
-                                    <span className="text-lg">{tool.name}</span>
+                                    <span className="text-lg">{tool.notFound ? '該当なし' : tool.name}</span>
                                 </div>
 
                                 <div className={`flex`}>
                                     <div className="px-4 pt-4 h-120 w-5/6">
                                         <div className="relative aspect-square flex w-full justify-center h-7/12">
-                                            <img className="h-64 w-64 object rounded-xl border border-main" src="img/tmp/1.jpg" alt="工具" />
+                                            <img className="h-64 w-64 object rounded-xl border border-main" src={tool.photoUrl || 'img/tmp/1.jpg'} alt="工具" />
                                         </div>
                                         <div className="flex flex-col gap-3 px-4.5 pt-2 pb-1.5">
 
@@ -124,8 +125,12 @@ const RentModal = ({ isOpen, setIsOpen }) => {
                                 </div>
 
                                 <div className="px-4.5 pt-3.5 pb-4.5">
-                                    <button onClick={() => setIsConfirmOpen(true)} className="w-full py-3.5 rounded-lg font-extrabold bg-main text-base">
-                                        借りる
+                                    <button
+                                        onClick={() => setIsConfirmOpen(true)}
+                                        disabled={tool.notFound}
+                                        className="w-full py-3.5 rounded-lg font-extrabold bg-main text-base disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                        {tool.notFound ? '該当する工具がありません' : '借りる'}
                                     </button>
                                 </div>
 

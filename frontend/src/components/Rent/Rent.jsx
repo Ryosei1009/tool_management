@@ -26,7 +26,7 @@ const Rent = () => {
                 <ToolSearch setResult={setResult} />
             </div>
         </div>
-        <RentInput isOpen={isModalOpen} setIsOpen={setIsModalOpen} />
+        <RentInput isOpen={isModalOpen} setIsOpen={setIsModalOpen} toolId={result} />
         </>
     )
 }

@@ -1,0 +1,6 @@
+[
+  { "id": "RN-0001-A", "name": "レンチA", "startDate": "1月1日", "endDate": "1月2日", "user": "山田 太郎", "place": "A棟 1F", "photoUrl": "/img/tmp/1.jpg", "state": "good", "pin": { "x": 20, "y": 20 }, "lastInspectionDate": "2024-06-01" },
+  { "id": "DR-0002-B", "name": "電動ドリル", "startDate": "1月1日", "endDate": "1月2日", "user": "佐藤 花子", "place": "B棟 2F", "photoUrl": "/img/tmp/1.jpg", "state": "good", "pin": { "x": 45, "y": 45 }, "lastInspectionDate": "2024-05-15" },
+  { "id": "HM-0003-C", "name": "ハンマー", "startDate": "1月1日", "endDate": "1月2日", "user": "鈴木 一郎", "place": "C棟 倉庫", "photoUrl": "/img/tmp/1.jpg", "state": "bad", "pin": { "x": 20, "y": 70 }, "lastInspectionDate": "2024-04-20" },
+  { "id": "TL-0004-D", "name": "トルクレンチ", "startDate": "1月1日", "endDate": "1月2日", "user": "田中 次郎", "place": "A棟 3F", "photoUrl": "/img/tmp/1.jpg", "state": "damaged", "pin": { "x": 70, "y": 20 }, "lastInspectionDate": "2024-03-10" }
+]
