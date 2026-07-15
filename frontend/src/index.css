@@ -25,6 +25,9 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    /* 基準サイズを引き上げ、文字とタッチ領域を全体的に拡大（iPad前提のユニバーサルデザイン）。
+       % 指定でブラウザの文字サイズ設定も尊重する。既定16px → 約18px */
+    font-size: 112.5%;
   }
 
   body {
