@@ -16,7 +16,7 @@ const ToolSearch = ({ setResult, tools = sampleTools }) => {
     <div className="flex h-full flex-col items-center gap-4 px-6 pt-8">
       {/* 検索バー */}
       <div className="flex w-full max-w-md items-center gap-3">
-        <div className="flex flex-1 items-center rounded-lg border-main border-2 bg-base px-4 py-2">
+        <div className="flex flex-1 items-center rounded-lg border border-line bg-base px-4 py-2">
           <input
             type="text"
             value={keyword}
@@ -39,7 +39,7 @@ const ToolSearch = ({ setResult, tools = sampleTools }) => {
       </div>
 
       {/* 検索結果リスト */}
-      <div className="flex w-full max-w-md flex-1 flex-col gap-4 overflow-y-auto pb-24">
+      <div className="max-h-[70vh] flex w-full max-w-md flex-1 flex-col gap-4 overflow-y-auto pb-24">
         {filtered.length === 0 ? (
           <p className="pt-8 text-center text-sub font-semibold">
             該当する工具がありません
@@ -50,9 +50,9 @@ const ToolSearch = ({ setResult, tools = sampleTools }) => {
               key={tool.id ?? i}
               type="button"
               onClick={() => setResult(tool.id ?? tool.name)}
-              className="flex items-center gap-4 rounded-2xl border-main border-2 bg-base px-4 py-3 text-left"
+              className="flex items-center gap-4 rounded-2xl border border-line bg-base px-4 py-3 text-left"
             >
-              <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-main bg-base">
+              <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-line bg-base">
                 {tool.photoUrl && (
                   <img
                     src={tool.photoUrl}

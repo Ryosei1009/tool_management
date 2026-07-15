@@ -92,7 +92,7 @@ const QRReader = ({ setResult }) => {
 				) : (
 					<div className='relative'>
 						<video ref={videoRef} autoPlay playsInline className='absolute left-0 top-0 -z-50 h-75 w-75' />
-						<canvas onClick={() => { setIsModalOpen(true) }} width={window.innerWidth * 0.4} height={window.innerWidth * 0.4} ref={canvasRef} className={`border-accent border-8 rounded-2xl`} />
+						<canvas onClick={() => { setIsModalOpen(true) }} width={window.innerWidth * 0.4} height={window.innerWidth * 0.4} ref={canvasRef} className={`border-main border-4 rounded-2xl`} />
 						<div className={`text-xl font-bold`}>
 							クリックで拡大
 						</div>

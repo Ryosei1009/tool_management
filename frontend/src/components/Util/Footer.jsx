@@ -20,7 +20,7 @@ const Footer = () => {
     ]
 
     return (
-        <header className="w-screen h-24 fixed bottom-0 left-0 bg-sub flex justify-around items-center">
+        <header className="w-screen h-24 fixed bottom-0 left-0 bg-main flex justify-around items-center">
             {items.map(({ to, img, alt }) => (
                 <Link
                     key={to}

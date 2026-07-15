@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react'
 import { sampleRentItems } from '../../data/sampleData'
 import ConfirmModal from '../Util/ConfirmModal'
 import RenewModal from './RenewModal'
+import PageTitle from '../Util/PageTitle'
 
 // 検索バー + フィルタ（借りる画面のヘッダーに合わせた配色）
 const SearchBar = ({ keyword, onChange }) => (
     <div className="flex items-center gap-3 mb-6">
-        <div className="flex flex-1 items-center rounded-lg border-main border-2 bg-base px-4 py-2">
+        <div className="flex flex-1 items-center rounded-lg border border-line bg-base px-4 py-2">
             <input
                 type="text"
                 value={keyword}
@@ -28,7 +29,7 @@ const SearchBar = ({ keyword, onChange }) => (
         <button
             type="button"
             aria-label="絞り込み"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border-main border-2 bg-base"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line bg-base"
         >
             <svg className="h-6 w-6 text-main" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M3 4h18l-7 8v7l-4 2v-9L3 4z" />
@@ -42,9 +43,9 @@ const RentCard = ({ item, onReturn, onRenew }) => {
     const { name = '', photoUrl = '', startDate = '', endDate = '', place = '' } = item ?? {}
 
     return (
-        <div className="flex items-center gap-4 rounded-2xl border-main border-2 bg-base px-4 py-3">
+        <div className="flex items-center gap-4 rounded-2xl border border-line bg-base px-4 py-3">
             {/* 顔写真 / アイコン */}
-            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-main bg-base">
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-line bg-base">
                 {photoUrl && (
                     <img src={photoUrl} alt={name || 'アイコン'} className="h-full w-full object-cover" />
                 )}
@@ -104,11 +105,9 @@ const RentList = ({ items = sampleRentItems, onReturn, onRenew }) => {
 
     return (
         <>
-            <div className="flex items-start justify-center min-h-screen w-screen bg-base pb-24">
+            <div className="flex items-start justify-center w-screen bg-base pb-24">
                 <div className="w-full max-w-5xl px-6 pt-8">
-                    <div className="text-6xl font-bold text-center pb-8">
-                        借りているものリスト
-                    </div>
+                    <PageTitle en="MY RENTALS">借りているもの</PageTitle>
                     <SearchBar keyword={keyword} onChange={setKeyword} />
                     <div className="flex flex-col gap-5">
                         {filtered.map((item, i) => (

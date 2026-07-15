@@ -55,7 +55,7 @@ const QRModal = ({ isOpen, setIsOpen, videoRef }) => {
                         leaveTo="opacity-0 scale-95"
                     >
                         <Dialog.Panel className="relative max-w-5xl mx-auto">
-					        <canvas width={window.innerHeight * 0.8} height={window.innerHeight * 0.8} ref={modalCanvasRef} className={`border-accent border-8 rounded-2xl`} />
+					        <canvas width={window.innerHeight * 0.8} height={window.innerHeight * 0.8} ref={modalCanvasRef} className={`border-main border-4 rounded-2xl`} />
                         </Dialog.Panel>
                     </Transition.Child>
                 </div>

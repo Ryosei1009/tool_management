@@ -1,8 +1,63 @@
 @import "tailwindcss";
 
+/*
+  カラーパレットは大阪富士工業株式会社（ofic.co.jp）のコーポレートUIに準拠。
+  ・温かみのある黒 #23231E を本文に
+  ・主要アクションはコーポレートネイビー #2E3D4C
+  ・補助アクセントにスチールブルーグレー #8696A6
+  ・赤 #E60012 は強調・警告に限定
+  落ち着いた B2B 製造業らしい配色。
+*/
 @theme {
-  --color-base: #FFFFFF;
-  --color-accent: #E60012;
-  --color-main: #0073BF;
-  --color-sub: #595757;
+  --color-base: #FFFFFF;      /* 背景・白 */
+  --color-ink: #23231E;       /* 本文テキスト（温かみのある黒） */
+  --color-accent: #E60012;    /* 差し色の赤（強調・警告、最小限に使用） */
+  --color-main: #23231E;      /* 主要アクション・アプリバー（OFIC実配色のほぼ黒） */
+  --color-steel: #8696A6;     /* スチールブルーグレー（補助アクセント） */
+  --color-sub: #595757;       /* サブテキスト */
+  --color-line: #DFE3E3;      /* 区切り線・境界（細いライトグレー罫線） */
+
+  /* 洗練されたゴシック体（端末標準の日本語フォントで代替、外部読込なし） */
+  --font-sans: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic",
+    "YuGothic", "Meiryo", system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background-color: var(--color-base);
+    line-height: 1.7;              /* 読みやすい行間 */
+    font-feature-settings: "palt"; /* 日本語の詰め組みで可読性向上 */
+  }
+
+  /* 濃色背景のユーティリティは白文字を既定にしてコントラストを確保（WCAG AA） */
+  .bg-main,
+  .bg-accent,
+  .bg-sub {
+    color: var(--color-base);
+  }
+
+  /* キーボード操作時のみフォーカスを明示（ユニバーサルデザイン） */
+  :focus-visible {
+    outline: 3px solid var(--color-main);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* アニメーションを控えたいユーザーへの配慮 */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }

@@ -51,7 +51,7 @@ const MapModal = ({ isOpen, setIsOpen, src = 'img/map.png', pin, setTool }) => {
                             {/* マップ本体：クリックでピンを立てる */}
                             <div
                                 onClick={handleClick}
-                                className="relative cursor-crosshair overflow-hidden rounded-2xl border-accent border-8 bg-base"
+                                className="relative cursor-crosshair overflow-hidden rounded-2xl border-main border-4 bg-base"
                             >
                                 <img
                                     src={src}

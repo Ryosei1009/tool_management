@@ -6,7 +6,7 @@ import ConfirmModal from '../Util/ConfirmModal'
 import { getToolState } from '../../utils/toolState'
 import { buildRentTool } from '../../utils/tools'
 
-const RentModal = ({ isOpen, setIsOpen }) => {
+const RentModal = ({ isOpen, setIsOpen, toolId }) => {
     const [isMapOpen, setIsMapOpen] = useState(false)
     const [isConfirmOpen, setIsConfirmOpen] = useState(false)
     const [isConfirmed, setIsConfirmed] = useState(false)
@@ -49,7 +49,7 @@ const RentModal = ({ isOpen, setIsOpen }) => {
                         leaveTo="opacity-0 scale-95"
                     >
                         <Dialog.Panel className="relative max-w-5xl mx-auto">
-                            <div className="w-full max-w-5xl bg-base border-main border-4 rounded-2xl overflow-hidden fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/3">
+                            <div className="w-full max-w-5xl bg-base border border-line rounded-2xl overflow-hidden fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/3">
                                 <div className={`flex items-center justify-between px-4 py-4 border-b`}>
                                     <span className="text-lg font-semibold">工具貸し出し</span>
                                     <span className="text-lg">{tool.notFound ? '該当なし' : tool.name}</span>
@@ -58,7 +58,7 @@ const RentModal = ({ isOpen, setIsOpen }) => {
                                 <div className={`flex`}>
                                     <div className="px-4 pt-4 h-120 w-5/6">
                                         <div className="relative aspect-square flex w-full justify-center h-7/12">
-                                            <img className="h-64 w-64 object rounded-xl border border-main" src={tool.photoUrl || 'img/tmp/1.jpg'} alt="工具" />
+                                            <img className="h-64 w-64 object rounded-xl border border-line" src={tool.photoUrl || 'img/tmp/1.jpg'} alt="工具" />
                                         </div>
                                         <div className="flex flex-col gap-3 px-4.5 pt-2 pb-1.5">
 
@@ -94,7 +94,7 @@ const RentModal = ({ isOpen, setIsOpen }) => {
                                     <div className="relative aspect-square h-96 pt-4 pr-6 w-full">
                                         <div
                                             onClick={() => setIsMapOpen(true)}
-                                            className="relative h-full w-full cursor-pointer overflow-hidden rounded-xl border border-main"
+                                            className="relative h-full w-full cursor-pointer overflow-hidden rounded-xl border border-line"
                                         >
                                             <img className="h-full w-full object-cover" src="img/map.png" alt="マップ" />
                                             {/* 配置済みのピンを縮小マップにも表示 */}
