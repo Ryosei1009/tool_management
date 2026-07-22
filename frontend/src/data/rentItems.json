@@ -1,5 +1,6 @@
 [
-  { "id": "RN-0001-A", "name": "レンチA", "startDate": "6月20日", "endDate": "7月5日", "place": "A棟 1F", "photoUrl": "/img/tmp/1.jpg" },
-  { "id": "DR-0002-B", "name": "電動ドリル", "startDate": "6月25日", "endDate": "7月8日", "place": "B棟 2F", "photoUrl": "/img/tmp/1.jpg" },
-  { "id": "HM-0003-C", "name": "ハンマー", "startDate": "6月28日", "endDate": "7月10日", "place": "C棟 倉庫", "photoUrl": "/img/tmp/1.jpg" }
+  { "id": "A1", "name": "ペンチ1", "startDate": "6月20日", "endDate": "7月5日", "place": "A1", "photoUrl": "/img/tmp/1.cutter/A1_pench1.jpg" },
+  { "id": "D1", "name": "プラスドライバー", "startDate": "6月25日", "endDate": "7月8日", "place": "A4", "photoUrl": "/img/tmp/4.driver/D1_phillips_driver.jpg" },
+  { "id": "G5", "name": "デジタルノギス", "startDate": "6月28日", "endDate": "7月10日", "place": "A7", "photoUrl": "/img/tmp/7.measure/G5_digital_caliper.jpg" },
+  { "id": "B1", "name": "ハンマー", "startDate": "7月1日", "endDate": "7月15日", "place": "A2", "photoUrl": "/img/tmp/2.striker/B1_hammer.jpg" }
 ]

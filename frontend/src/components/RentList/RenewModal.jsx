@@ -61,7 +61,7 @@ const RenewModal = ({ isOpen, setIsOpen }) => {
                                 <div className={`flex`}>
                                     <div className="px-4 pt-4 h-120 w-5/6">
                                         <div className="relative aspect-square flex w-full justify-center h-7/12">
-                                            <img className="h-64 w-64 object rounded-xl border border-line" src="img/tmp/1.jpg" alt="工具" />
+                                            <img className="h-64 w-64 object rounded-xl border border-line" src="/img/tmp/1.cutter/A1_pench1.jpg" alt="工具" />
                                         </div>
                                         <div className="flex flex-col gap-3 px-4.5 pt-2 pb-1.5">
 
