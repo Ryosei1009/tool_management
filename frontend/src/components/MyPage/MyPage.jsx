@@ -48,13 +48,11 @@ const MyPage = ({ employee = sampleEmployee }) => {
                     {/* 顔写真 + 社員情報 */}
                     <div className="flex px-4.5 pt-5">
                         <div className="h-56 w-44 shrink-0 overflow-hidden rounded-xl border border-line bg-line">
-                            {photoUrl && (
-                                <img
-                                    src={photoUrl}
-                                    alt={name ? `${name}の写真` : '社員写真'}
-                                    className="h-full w-full object-cover"
-                                />
-                            )}
+                            <img
+                                src="/img/tmp/tmp_icon.png"
+                                alt={name ? `${name}の写真` : '社員写真'}
+                                className="h-full w-full object-cover"
+                            />
                         </div>
 
                         <div className="flex flex-1 flex-col justify-center gap-3 px-6">
