@@ -60,13 +60,18 @@ export const api = {
     post: (path, body, options) => request(path, { ...options, method: 'POST', body }),
 }
 
+// frontend/public 配下のファイルの URL。
+// 本番は /tool/ 配下で配信する（vite の base）ので、先頭に BASE_URL を付ける。
+export const publicUrl = (path) => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`
+
 // 工具写真の URL を解決する。
 // シードデータは frontend/public 配下の "/img/..."、アップロード画像は
-// backend が配信する "/images/..." なので後者だけ API のオリジンを足す。
+// backend が配信する "/images/..." なので後者は API のオリジンを足す。
 export const resolveImageUrl = (photoUrl) => {
     if (!photoUrl) return ''
     if (/^https?:\/\//.test(photoUrl)) return photoUrl
     if (photoUrl.startsWith('/images/')) return `${API_BASE_URL}${photoUrl}`
+    if (photoUrl.startsWith('/img/')) return publicUrl(photoUrl)
     return photoUrl
 }
 

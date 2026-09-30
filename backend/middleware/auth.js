@@ -8,7 +8,7 @@ const authenticate = (req, res, next) => {
 
     const token = header.startsWith('Bearer ') ? header.slice(7) : header;
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    jwt.verify(token, process.env.TM_JWT_SECRET || process.env.JWT_SECRET, (err, decoded) => {
         if (err) return res.status(401).send('無許可');
         req.user = decoded;
         next();

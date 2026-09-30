@@ -11,7 +11,7 @@ import AuthProvider from './auth/AuthProvider'
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       {/* 起動時に自動ログインし、トークンが揃ってから各画面を描画する */}
       <AuthProvider>
         <Header />

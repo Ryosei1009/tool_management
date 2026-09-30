@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import MapModal from './MapModal'
 import { getMapName } from '../../utils/map'
+import { publicUrl } from '../../api'
 
 // マップの縮小表示 + タップでピン配置モーダルを開くブロック。
 // 貸出・更新・デフォルト位置設定で共通して使う。
 // 場所は「A5」という区画名の文字でも示し、ピンの色や位置だけに頼らない。
-const MapPicker = ({ pin, setPin, label = '場所', src = '/img/map.png' }) => {
+const MapPicker = ({ pin, setPin, label = '場所', src = publicUrl('/img/map.png') }) => {
     const [isOpen, setIsOpen] = useState(false)
     const place = getMapName(pin?.x, pin?.y)
 

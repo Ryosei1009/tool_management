@@ -134,7 +134,7 @@ const MyPage = () => {
                     <div className="flex flex-wrap gap-6 px-5 pt-6">
                         <div className="h-56 w-44 max-w-full shrink-0 overflow-hidden rounded-xl border-2 border-ink bg-field">
                             <img
-                                src={resolveImageUrl(photoUrl) || '/img/tmp/tmp_icon.png'}
+                                src={resolveImageUrl(photoUrl || '/img/tmp/tmp_icon.png')}
                                 alt={name ? `${name}の写真` : '社員写真'}
                                 className="h-full w-full object-cover"
                             />

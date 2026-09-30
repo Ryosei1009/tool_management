@@ -5,7 +5,9 @@ import tailwindcss from '@tailwindcss/vite'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // 本番は既存の API サーバーに組み込み、https://api.shinoryo.com/tool/ で配信する
+  base: command === 'build' ? '/tool/' : '/',
   plugins: [
     react(),
     tailwindcss(),
@@ -21,7 +23,13 @@ export default defineConfig({
         target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:4000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
+        // ブラウザから見ると /api は同一オリジンなので CORS は不要。
+        // iPad 等から LAN の IP でアクセスすると Origin が ALLOWED_ORIGINS に
+        // 無く backend に弾かれるため、プロキシ時に Origin を落とす。
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => proxyReq.removeHeader('origin'))
+        },
       },
     },
   },
-})
+}))

@@ -99,8 +99,7 @@ const SelectUserModal = ({ isOpen, setIsOpen, rentalId, toolName, onTransferred 
                                     >
                                         <img
                                             src={
-                                                resolveImageUrl(employee.photoUrl) ||
-                                                '/img/tmp/tmp_icon.png'
+                                                resolveImageUrl(employee.photoUrl || '/img/tmp/tmp_icon.png')
                                             }
                                             alt=""
                                             aria-hidden="true"

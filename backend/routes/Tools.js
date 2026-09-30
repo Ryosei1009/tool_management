@@ -6,9 +6,10 @@ const db = require('../db/pool').promise;
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { toToolResponse, toIsoDate } = require('../utils/format');
 
-// 工具写真のアップロード先（index.js で /images として静的配信）
+// 工具写真のアップロード先（router.js で /images として静的配信）。
+// 既存 API に組み込むと cwd が変わるので __dirname 基準にする。
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'images'),
+    destination: (req, file, cb) => cb(null, path.join(__dirname, '../images')),
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname).toLowerCase();
         cb(null, `${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`);

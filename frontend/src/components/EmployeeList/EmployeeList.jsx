@@ -19,7 +19,7 @@ const EmployeeCard = ({ employee, isMe, canEdit, onEdit, onDelete }) => {
         <li className="flex flex-wrap items-center gap-5 rounded-2xl border-2 border-ink bg-surface px-5 py-4">
             <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-2 border-ink bg-field">
                 <img
-                    src={resolveImageUrl(photoUrl) || '/img/tmp/tmp_icon.png'}
+                    src={resolveImageUrl(photoUrl || '/img/tmp/tmp_icon.png')}
                     alt=""
                     aria-hidden="true"
                     className="h-full w-full object-cover"

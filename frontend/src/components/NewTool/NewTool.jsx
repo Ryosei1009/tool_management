@@ -150,7 +150,7 @@ const NewTool = () => {
                         <Field id="tool-photo" label="写真">
                             <img
                                 className="h-56 w-full rounded-xl border-2 border-ink bg-field object-contain"
-                                src={preview || resolveImageUrl(tool.photoUrl) || '/img/map.png'}
+                                src={preview || resolveImageUrl(tool.photoUrl || '/img/map.png')}
                                 alt={preview ? '選択した写真' : '写真は未選択です'}
                             />
                             <input

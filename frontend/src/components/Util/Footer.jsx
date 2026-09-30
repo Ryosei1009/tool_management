@@ -1,14 +1,15 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { publicUrl } from '../../api'
 
 // 画面下部の固定ナビ。
 // 手袋でも押せるよう1項目を大きく取り、アイコンだけに頼らず必ず文字を併記する。
 // 現在地は色の反転だけでなく上端のバーと aria-current でも示す。
 const items = [
-    { to: '/rent', img: '/img/footer/rent.png', label: '借りる' },
-    { to: '/rentlist', img: '/img/footer/rentlist.png', label: '借りているもの' },
-    { to: '/tools', img: '/img/footer/tools.png', label: '工具リスト' },
-    { to: '/mypage', img: '/img/footer/mypage.png', label: 'マイページ' },
+    { to: '/rent', img: publicUrl('/img/footer/rent.png'), label: '借りる' },
+    { to: '/rentlist', img: publicUrl('/img/footer/rentlist.png'), label: '借りているもの' },
+    { to: '/tools', img: publicUrl('/img/footer/tools.png'), label: '工具リスト' },
+    { to: '/mypage', img: publicUrl('/img/footer/mypage.png'), label: 'マイページ' },
 ]
 
 const Footer = () => {

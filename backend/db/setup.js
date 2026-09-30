@@ -15,7 +15,7 @@ const ADDED_COLUMNS = [
 
 const main = async () => {
     const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-    const database = process.env.MYSQL_DATABASE;
+    const database = process.env.TM_MYSQL_DATABASE || process.env.MYSQL_DATABASE;
 
     // schema.sql 側に CREATE DATABASE / USE があるので database は指定せずに接続する
     const conn = await mysql.createConnection({

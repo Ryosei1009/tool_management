@@ -2,7 +2,7 @@
 import { api, API_BASE_URL, setToken, clearToken, getToken } from './client'
 
 export { API_BASE_URL, setToken, clearToken, getToken }
-export { resolveImageUrl, ApiError } from './client'
+export { resolveImageUrl, publicUrl, ApiError } from './client'
 
 /* ---------------- 認証 ---------------- */
 

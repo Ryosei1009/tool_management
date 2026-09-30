@@ -26,9 +26,6 @@ app.use(
         allowedHeaders: ['Content-Type', 'Authorization'],
     })
 );
-app.use(express.json());
-app.use('/images', express.static('images'));
-
 // アクセスログ（参照元と同じく短縮ログと詳細ログの2本立て）
 const logDir = 'logs';
 if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
@@ -75,16 +72,10 @@ app.use((req, res, next) => {
     next();
 });
 
-app.get('/health', (req, res) => res.json({ ok: true }));
+// ルーティングは既存 API への組み込みと共通（router.js）
+app.use(require('./router').api);
 
-app.use('/auth/', require('./routes/Auth'));
-app.use('/tools/', require('./routes/Tools'));
-app.use('/rentals/', require('./routes/Rentals'));
-app.use('/employees/', require('./routes/Employees'));
-
-app.use((req, res) => res.status(404).send('エンドポイントが見つかりません。'));
-
-// multer や CORS のエラーをまとめて拾う
+// CORS のエラーを拾う（ルート内のエラーは router.js 側で処理する）
 app.use((err, req, res, next) => {
     console.error(err);
     res.status(err.status || 500).send(err.message || 'サーバーエラーが発生しました。');

@@ -1,10 +1,11 @@
 import { Dialog, Transition } from '@headlessui/react'
 import React, { Fragment } from 'react'
 import { getMapName } from '../../utils/map'
+import { publicUrl } from '../../api'
 
 // マップ拡大モーダル。画像をタップするとその位置にピンを立てられる。
 // pin / setPin は { x, y }（画像に対する 0〜100 の割合）で管理する。
-const MapModal = ({ isOpen, setIsOpen, src = '/img/map.png', pin, setPin }) => {
+const MapModal = ({ isOpen, setIsOpen, src = publicUrl('/img/map.png'), pin, setPin }) => {
     // タップ位置を画像サイズに対する割合に変換してピンを立てる
     const handleClick = (e) => {
         const rect = e.currentTarget.getBoundingClientRect()
