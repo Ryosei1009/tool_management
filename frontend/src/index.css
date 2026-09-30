@@ -99,6 +99,26 @@
     background-color: var(--color-surface);
   }
 
+  /* iPad 等の Safari は日付欄に固有の最小幅を持たせ、w-full でも縮まずに
+     モーダルから横にはみ出す。標準の見た目を外して親の幅に収める。 */
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* 見た目を外すと Safari では日付が中央寄せになるので左に揃える */
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+  }
+
+  /* fieldset は既定で中身より狭くなれず、日付欄と一緒に横へ広がるのを防ぐ */
+  fieldset {
+    min-width: 0;
+  }
+
   /* チェックボックスは手袋でも押せる大きさに */
   input[type="checkbox"],
   input[type="radio"] {
