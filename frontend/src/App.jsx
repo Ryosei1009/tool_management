@@ -1,32 +1,34 @@
-import { useState } from 'react'
 import Footer from './components/Util/Footer'
 import Header from './components/Util/Header'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import ToolList from './components/ToolList/ToolList'
 import RentList from './components/RentList/RentList'
 import Rent from './components/Rent/Rent'
 import MyPage from './components/MyPage/MyPage'
 import NewTool from './components/NewTool/NewTool'
+import EmployeeList from './components/EmployeeList/EmployeeList'
+import AuthProvider from './auth/AuthProvider'
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <BrowserRouter>
+    <BrowserRouter>
+      {/* 起動時に自動ログインし、トークンが揃ってから各画面を描画する */}
+      <AuthProvider>
         <Header />
         <main>
           <Routes>
+            <Route path="/" element={<Navigate to="/tools" replace />} />
             <Route path="/rent" element={<Rent />} />
             <Route path="/rentlist" element={<RentList />} />
             <Route path="/tools" element={<ToolList />} />
             <Route path="/mypage" element={<MyPage />} />
             <Route path="/newtool" element={<NewTool />} />
+            <Route path="/employees" element={<EmployeeList />} />
           </Routes>
           <Footer />
         </main>
-      </BrowserRouter>
-    </>
+      </AuthProvider>
+    </BrowserRouter>
   )
 }
 

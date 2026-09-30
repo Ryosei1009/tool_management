@@ -1,162 +1,212 @@
-import { Dialog, Transition } from '@headlessui/react'
-import React, { Fragment, useEffect, useState } from 'react'
-import MapModal from '../Util/MapModal'
-import { getMapName } from '../../utils/map'
+import React, { useEffect, useState } from 'react'
+import Modal from '../Util/Modal'
+import Button from '../Util/Button'
 import ConfirmModal from '../Util/ConfirmModal'
-import { getToolState } from '../../utils/toolState'
+import StateBadge from '../Util/StateBadge'
+import MapPicker from '../Util/MapPicker'
 import SelectUserModal from '../Util/SelectUserModa'
+import { TOOL_STATES } from '../../utils/toolState'
+import { renewRental, resolveImageUrl } from '../../api'
 
-const RenewModal = ({ isOpen, setIsOpen }) => {
-    const [isMapOpen, setIsMapOpen] = useState(false)
+const RenewModal = ({ isOpen, setIsOpen, rental, onChanged }) => {
     const [isConfirmOpen, setIsConfirmOpen] = useState(false)
     const [isConfirmed, setIsConfirmed] = useState(false)
-    useEffect(() => {
-        if (isConfirmed) {
-            console.log('更新処理を実行')
-            window.location.reload()
-        }
-    }, [isConfirmed])
-    const[isPassModalOpen, setIsPassModalOpen] = useState(false)
+    const [isPassModalOpen, setIsPassModalOpen] = useState(false)
+    const [saving, setSaving] = useState(false)
+    const [error, setError] = useState('')
 
-    const [tool, setTool] = useState({
-        name: "レンチA",
-        id: "RN-0001-A",
-        state: "good",
-        lastRent: {start: "2024-06-01", end: "2024-06-15"},
-        lastInspectionDate: "2024-06-01",
-        pin: { x: 30, y: 72 },
-    })
+    // 一覧から渡された貸出情報を編集用の state に写す
+    const [tool, setTool] = useState(null)
+    useEffect(() => {
+        if (!rental) return
+        setTool({
+            rentalId: rental.rentalId,
+            id: rental.id,
+            name: rental.name,
+            photoUrl: rental.photoUrl,
+            state: rental.state ?? 'good',
+            pin: rental.pin ?? { x: 50, y: 50 },
+            lastRent: { start: rental.rentStart, end: rental.rentEnd },
+        })
+        setError('')
+    }, [rental])
+
+    // 確認モーダルで「更新する」が押されたら保存する
+    useEffect(() => {
+        if (!isConfirmed) return
+        setIsConfirmed(false)
+        setIsConfirmOpen(false)
+        if (!tool || saving) return
+        setSaving(true)
+        setError('')
+        renewRental({
+            rentalId: tool.rentalId,
+            startDate: tool.lastRent.start,
+            endDate: tool.lastRent.end,
+            state: tool.state,
+            pin: tool.pin,
+        })
+            .then(() => {
+                setIsOpen(false)
+                onChanged?.()
+            })
+            .catch((err) => setError(err.message))
+            .finally(() => setSaving(false))
+    }, [isConfirmed, tool, saving, setIsOpen, onChanged])
 
     return (
-        <Transition appear show={isOpen} as={Fragment}>
-            <Dialog as="div" className="relative z-20" onClose={() => setIsOpen(false)}>
-                <Transition.Child
-                    as={Fragment}
-                    enter="ease-out duration-300"
-                    enterFrom="opacity-0"
-                    enterTo="opacity-100"
-                    leave="ease-in duration-200"
-                    leaveFrom="opacity-100"
-                    leaveTo="opacity-0"
-                >
-                    <div className="fixed inset-0 bg-black/25" />
-                </Transition.Child>
-                <div className="fixed inset-0 flex items-center justify-center p-4">
-                    <Transition.Child
-                        as={Fragment}
-                        enter="ease-out duration-300"
-                        enterFrom="opacity-0 scale-95"
-                        enterTo="opacity-100 scale-100"
-                        leave="ease-in duration-200"
-                        leaveFrom="opacity-100 scale-100"
-                        leaveTo="opacity-0 scale-95"
-                    >
-                        <Dialog.Panel className="relative max-w-5xl mx-auto">
-                            <div className="w-full max-w-5xl bg-base border border-line rounded-2xl overflow-hidden fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/3">
-                                <div className={`flex items-center justify-between px-4 py-4 border-b`}>
-                                    <span className="text-lg font-semibold">工具更新</span>
-                                    <span className="text-lg">{tool.name}</span>
-                                </div>
-
-                                <div className={`flex`}>
-                                    <div className="px-4 pt-4 h-120 w-5/6">
-                                        <div className="relative aspect-square flex w-full justify-center h-7/12">
-                                            <img className="h-64 w-64 object rounded-xl border border-line" src="/img/tmp/1.cutter/A1_pench1.jpg" alt="工具" />
-                                        </div>
-                                        <div className="flex flex-col gap-3 px-4.5 pt-2 pb-1.5">
-
-                                            <div className="flex items-baseline gap-3 pb-2.5 border-b border-dashed">
-                                                <span className="w-16 text-xs">名前</span>
-                                                <span className="font-semibold">{tool.name}</span>
-                                            </div>
-
-                                            <div className="flex items-baseline gap-3 pb-2.5 border-b border-dashed">
-                                                <span className="w-16 text-xs">ID</span>
-                                                <span className="font-semibold">{tool.id}</span>
-                                            </div>
-
-                                            <div className="flex items-baseline gap-3 pb-2.5 border-b border-dashed">
-                                                <span className="w-16 text-xs">状態</span>
-                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border font-bold">
-                                                    <span className={`w-3 h-3 rounded-full ${tool.state === 'good' ? 'bg-green-500' : tool.state === 'bad' ? 'bg-yellow-500' : 'bg-red-500'}`}></span>
-                                                    <select name="toolState" id="toolState" value={tool.state} onChange={(e) => setTool({...tool, state: e.target.value})} className="bg-base text-sm">
-                                                        <option value="good">良好</option>
-                                                        <option value="bad">不良</option>
-                                                        <option value="broken">破損</option>
-                                                    </select>
-                                                </span>
-                                            </div>
-
-                                            <div className="flex items-baseline gap-3 pb-0.5">
-                                                <span className="w-16 text-xs">期間</span>
-                                                <span className="font-semibold">
-                                                    <input type="date" value={tool.lastRent.start} onChange={(e) => setTool({...tool, lastRent: {...tool.lastRent, start: e.target.value}})} className="w-32 px-2 py-1 rounded-lg border border-line text-sm" />
-                                                    <span className="mx-4">→</span>
-                                                    <input type="date" value={tool.lastRent.end} onChange={(e) => setTool({...tool, lastRent: {...tool.lastRent, end: e.target.value}})} className="w-32 px-2 py-1 rounded-lg border border-line text-sm" />
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="relative aspect-square h-108 pt-4 pr-6 w-full">
-                                        <div
-                                            onClick={() => setIsMapOpen(true)}
-                                            className="relative h-full w-full cursor-pointer overflow-hidden rounded-xl border border-line"
-                                        >
-                                            <img className="h-full w-full object-cover" src="img/map.png" alt="マップ" />
-                                            {/* 配置済みのピンを縮小マップにも表示 */}
-                                            {tool.pin && (
-                                                <div
-                                                    className="pointer-events-none absolute -translate-x-1/2 -translate-y-full"
-                                                    style={{ left: `${tool.pin.x}%`, top: `${tool.pin.y}%` }}
-                                                >
-                                                    <svg width="24" height="24" viewBox="0 0 24 24" className="drop-shadow">
-                                                        <path d="M12 2C8.1 2 5 5.1 5 9c0 5.2 7 13 7 13s7-7.8 7-13c0-3.9-3.1-7-7-7z" fill="#E60012" stroke="#fff" strokeWidth="1.5" />
-                                                        <circle cx="12" cy="9" r="2.5" fill="#fff" />
-                                                    </svg>
-                                                </div>
-                                            )}
-                                            <span className="absolute bottom-1 right-1 rounded bg-black/50 px-2 py-0.5 text-xs text-base">
-                                                タップで拡大
-                                            </span>
-                                        </div>
-                                        <div className="flex items-baseline gap-3 mt-3 pb-2.5 border-b border-dashed">
-                                            <span className="w-16 text-xs">
-                                                場所：
-                                            </span>
-                                            <span className="font-semibold">
-                                                {getMapName(tool.pin?.x, tool.pin?.y)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-4 px-4.5 pt-3.5 pb-4.5">
-                                    <button onClick={() => setIsPassModalOpen(true)} className="w-full py-3.5 rounded-lg font-extrabold bg-main text-base">
-                                        渡す
-                                    </button>
-                                    <button onClick={() => setIsConfirmOpen(true)} className="w-full py-3.5 rounded-lg font-extrabold bg-main text-base">
-                                        更新
-                                    </button>
-                                </div>
-
+        <>
+            <Modal
+                isOpen={isOpen}
+                setIsOpen={setIsOpen}
+                title="借りている工具"
+                subtitle={tool?.name}
+                footer={
+                    tool && (
+                        <>
+                            {error && (
+                                <p role="alert" className="pb-3 text-lg font-bold text-accent">
+                                    ✕ {error}
+                                </p>
+                            )}
+                            <div className="flex flex-wrap gap-4">
+                                <Button
+                                    variant="secondary"
+                                    className="flex-1"
+                                    onClick={() => setIsPassModalOpen(true)}
+                                    disabled={saving}
+                                >
+                                    別の人に渡す
+                                </Button>
+                                <Button
+                                    className="flex-1"
+                                    onClick={() => setIsConfirmOpen(true)}
+                                    disabled={saving}
+                                >
+                                    {saving ? '更新中...' : 'この内容で更新する'}
+                                </Button>
                             </div>
-                        </Dialog.Panel>
-                    </Transition.Child>
-                </div>
+                        </>
+                    )
+                }
+            >
+                {!tool ? (
+                    <p role="status" className="py-16 text-center text-xl font-bold text-sub">
+                        読み込み中...
+                    </p>
+                ) : (
+                    <div className="grid gap-8 md:grid-cols-2">
+                        <div className="flex flex-col gap-5">
+                            <img
+                                className="h-64 w-full rounded-xl border-2 border-ink object-contain"
+                                src={resolveImageUrl(tool.photoUrl)}
+                                alt={`${tool.name}の写真`}
+                            />
 
-                {/* マップ拡大 + ピン配置モーダル */}
-                <MapModal
-                    isOpen={isMapOpen}
-                    setIsOpen={setIsMapOpen}
-                    src="img/map.png"
-                    pin={tool.pin}
-                    setTool={setTool}
-                />
-                <ConfirmModal isOpen={isConfirmOpen} setIsOpen={setIsConfirmOpen} text="本当に更新しますか？" yesText="はい" noText="いいえ" setBoolean={setIsConfirmed} borderColor="border-main" />
-                <SelectUserModal isOpen={isPassModalOpen} setIsOpen={setIsPassModalOpen} />
-            </Dialog>
-        </Transition>
+                            <div className="flex items-baseline gap-4 border-b-2 border-dashed border-line pb-3">
+                                <span className="w-24 shrink-0 text-base text-sub">名前</span>
+                                <span className="text-2xl font-extrabold">{tool.name}</span>
+                            </div>
+
+                            <div className="flex items-baseline gap-4 border-b-2 border-dashed border-line pb-3">
+                                <span className="w-24 shrink-0 text-base text-sub">ID</span>
+                                <span className="text-2xl font-extrabold">{tool.id}</span>
+                            </div>
+
+                            <div className="flex items-baseline gap-4 border-b-2 border-dashed border-line pb-3">
+                                <span className="w-24 shrink-0 text-base text-sub">現在の状態</span>
+                                <StateBadge state={tool.state} size="lg" />
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <label htmlFor="renew-state" className="text-lg font-bold">
+                                    状態を変更する
+                                </label>
+                                <select
+                                    id="renew-state"
+                                    value={tool.state}
+                                    onChange={(e) => setTool({ ...tool, state: e.target.value })}
+                                    className="w-full rounded-xl border-2 border-ink bg-surface px-4 text-xl font-bold"
+                                >
+                                    {TOOL_STATES.map((s) => (
+                                        <option key={s.value} value={s.value}>
+                                            {s.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-6">
+                            <fieldset className="flex flex-col gap-3">
+                                <legend className="pb-1 text-lg font-bold">借りる期間</legend>
+                                <div className="flex flex-col gap-2">
+                                    <label htmlFor="renew-start" className="text-base text-sub">
+                                        貸出日
+                                    </label>
+                                    <input
+                                        id="renew-start"
+                                        type="date"
+                                        value={tool.lastRent.start}
+                                        onChange={(e) =>
+                                            setTool({
+                                                ...tool,
+                                                lastRent: { ...tool.lastRent, start: e.target.value },
+                                            })
+                                        }
+                                        className="w-full rounded-xl border-2 border-ink bg-surface px-4 text-xl font-bold"
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label htmlFor="renew-end" className="text-base text-sub">
+                                        返却予定日
+                                    </label>
+                                    <input
+                                        id="renew-end"
+                                        type="date"
+                                        value={tool.lastRent.end}
+                                        onChange={(e) =>
+                                            setTool({
+                                                ...tool,
+                                                lastRent: { ...tool.lastRent, end: e.target.value },
+                                            })
+                                        }
+                                        className="w-full rounded-xl border-2 border-ink bg-surface px-4 text-xl font-bold"
+                                    />
+                                </div>
+                            </fieldset>
+
+                            <MapPicker
+                                pin={tool.pin}
+                                setPin={(pin) => setTool({ ...tool, pin })}
+                                label="置き場所"
+                            />
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            <ConfirmModal
+                isOpen={isConfirmOpen}
+                setIsOpen={setIsConfirmOpen}
+                text="この内容で更新しますか？"
+                yesText="更新する"
+                noText="やめる"
+                setBoolean={setIsConfirmed}
+            />
+
+            <SelectUserModal
+                isOpen={isPassModalOpen}
+                setIsOpen={setIsPassModalOpen}
+                toolName={tool?.name}
+                rentalId={tool?.rentalId}
+                onTransferred={() => {
+                    setIsPassModalOpen(false)
+                    setIsOpen(false)
+                    onChanged?.()
+                }}
+            />
+        </>
     )
 }
 

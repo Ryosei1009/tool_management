@@ -1,14 +1,22 @@
 import { Dialog, Transition } from '@headlessui/react'
-import React, { Fragment, useEffect, useRef } from 'react'
+import React, { Fragment } from 'react'
 
-const ConfirmModal = ({ isOpen, setIsOpen, text, yesText, noText, setBoolean, borderColor }) => {
-    const confirm = ({ boolean }) => {
-        setBoolean(boolean)
-    }
-
+// 確認ダイアログ。
+// 誤操作が記録の食い違いに直結するため、選択肢は大きく、左右に離して配置する。
+// 「はい／いいえ」だけでなく操作名（返す・借りる等）を文言に含めて渡すこと。
+const ConfirmModal = ({
+    isOpen,
+    setIsOpen,
+    text,
+    yesText,
+    noText,
+    setBoolean,
+    borderColor = 'border-main',
+    danger = false,
+}) => {
     return (
         <Transition appear show={isOpen} as={Fragment}>
-            <Dialog as="div" className="relative z-20" onClose={() => setIsOpen(false)}>
+            <Dialog as="div" className="relative z-40" onClose={() => setIsOpen(false)}>
                 <Transition.Child
                     as={Fragment}
                     enter="ease-out duration-300"
@@ -18,7 +26,7 @@ const ConfirmModal = ({ isOpen, setIsOpen, text, yesText, noText, setBoolean, bo
                     leaveFrom="opacity-100"
                     leaveTo="opacity-0"
                 >
-                    <div className="fixed inset-0 bg-black/25" />
+                    <div className="fixed inset-0 bg-black/60" />
                 </Transition.Child>
                 <Transition.Child
                     as={Fragment}
@@ -29,18 +37,31 @@ const ConfirmModal = ({ isOpen, setIsOpen, text, yesText, noText, setBoolean, bo
                     leaveFrom="opacity-100"
                     leaveTo="opacity-0"
                 >
-                    <div className="fixed inset-0">
-                        <Dialog.Panel className={`min-w-72 border-8 bg-base ${borderColor} py-6 px-12 rounded-2xl flex flex-col items-center justify-center absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-bg`}>
-                            <div className="text-2xl font-bold">
+                    <div className="fixed inset-0 flex items-center justify-center p-4">
+                        <Dialog.Panel
+                            className={`w-full max-w-xl rounded-2xl border-8 bg-surface px-8 py-8 ${borderColor}`}
+                        >
+                            <Dialog.Title className="text-center text-3xl font-extrabold">
                                 {text}
-                            </div>
-                            <div className="flex gap-6 mt-6">
-                                <div onClick={() => confirm({ boolean: true })} className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-6 max-sm:px-3 rounded">
-                                    {yesText}
-                                </div>
-                                <div onClick={() => setIsOpen(false)} className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-6 max-sm:px-3 rounded">
+                            </Dialog.Title>
+                            <div className="mt-8 flex gap-5">
+                                {/* 取り消し側を左に置き、押し間違えても危険側に寄らないようにする */}
+                                <button
+                                    type="button"
+                                    onClick={() => setIsOpen(false)}
+                                    className="min-h-touch-lg w-1/2 rounded-xl border-2 border-ink bg-surface text-xl font-extrabold text-ink"
+                                >
                                     {noText}
-                                </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setBoolean(true)}
+                                    className={`min-h-touch-lg w-1/2 rounded-xl border-2 text-xl font-extrabold text-surface ${
+                                        danger ? 'border-accent bg-accent' : 'border-main bg-main'
+                                    }`}
+                                >
+                                    {yesText}
+                                </button>
                             </div>
                         </Dialog.Panel>
                     </div>

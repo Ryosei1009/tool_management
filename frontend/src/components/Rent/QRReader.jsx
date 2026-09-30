@@ -2,6 +2,9 @@ import jsQR from 'jsqr'
 import React, { useEffect, useRef, useState } from 'react'
 import QRModal from './QRModal'
 
+// QR 走査用キャンバスの解像度（表示サイズとは独立。端末幅に依存させない）
+const SCAN_SIZE = 480
+
 // isScanning が true の間だけQRスキャンを行う。
 // 借りるモーダルが開いている間は false になり、閉じると true に戻って再開する。
 const QRReader = ({ onScan, isScanning = true }) => {
@@ -33,7 +36,7 @@ const QRReader = ({ onScan, isScanning = true }) => {
 		// mediaDevices はセキュアコンテキスト（HTTPS または localhost）でのみ利用可能。
 		// iPad等に http でアクセスした場合は undefined になるため、ここでガードする。
 		if (!navigator.mediaDevices?.getUserMedia) {
-			setError('このページではカメラを利用できません（HTTPS でアクセスしてください）。右の検索から工具を選べます。')
+			setError('カメラを利用できません（HTTPS でアクセスしてください）。右の検索から工具を選べます。')
 			return
 		}
 
@@ -127,18 +130,44 @@ const QRReader = ({ onScan, isScanning = true }) => {
 
 	return (
 		<>
-			<div className='-mt-12 flex justify-center items-center h-full'>
+			<div className='flex w-full flex-col items-center gap-4 px-6'>
 				{error ? (
-					<div className='max-w-xs px-6 text-center text-sub font-semibold'>
+					<div role='alert' className='w-full max-w-md rounded-xl border-2 border-line bg-field p-6 text-center text-xl font-bold text-sub'>
 						{error}
 					</div>
 				) : (
-					<div className='relative'>
-						<video ref={videoRef} autoPlay playsInline className='absolute left-0 top-0 -z-50 h-75 w-75' />
-						<canvas onClick={() => { setIsModalOpen(true) }} width={window.innerWidth * 0.4} height={window.innerWidth * 0.4} ref={canvasRef} className={`border-main border-4 rounded-2xl`} />
-						<div className={`text-xl font-bold`}>
-							クリックで拡大
+					<div className='flex w-full max-w-md flex-col items-center gap-3'>
+						<p className='text-center text-xl font-bold'>
+							工具のQRコードを枠内に写してください
+						</p>
+						{/* video は絶対配置なので、必ず relative な親の中に閉じ込める。
+						    外に出すと画面全体に広がってレイアウトを壊す。 */}
+						<div className='relative w-full overflow-hidden'>
+							<video
+								ref={videoRef}
+								autoPlay
+								playsInline
+								muted
+								aria-hidden='true'
+								className='pointer-events-none absolute left-0 top-0 h-px w-px opacity-0'
+							/>
+							{/* 走査用の解像度は固定し、表示サイズだけ CSS で可変にする。
+							    こうすると端末幅が変わっても崩れず、走査の負荷も一定になる。 */}
+							<canvas
+								onClick={() => { setIsModalOpen(true) }}
+								width={SCAN_SIZE}
+								height={SCAN_SIZE}
+								ref={canvasRef}
+								className='block aspect-square w-full rounded-2xl border-4 border-main bg-field'
+							/>
 						</div>
+						<button
+							type='button'
+							onClick={() => setIsModalOpen(true)}
+							className='min-h-touch w-full rounded-xl border-2 border-ink px-8 text-lg font-extrabold'
+						>
+							カメラを拡大する
+						</button>
 					</div>
 				)}
 			</div>

@@ -1,89 +1,140 @@
-import { Dialog, Transition } from '@headlessui/react'
-import React, { Fragment, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
+import Modal from './Modal'
+import Button from './Button'
 import ConfirmModal from './ConfirmModal'
+import { fetchEmployees, resolveImageUrl, transferRental } from '../../api'
+import { useAuth } from '../../auth/AuthContext'
+import { useFetch } from '../../hooks/useFetch'
+import { Empty, ErrorMessage, Loading } from './AsyncState'
 
-const SelectUserModal = ({ isOpen, setIsOpen }) => {
-    const users = [
-        { id: 1, name: '田中 太郎' },
-        { id: 2, name: '田中 次郎' },
-        { id: 3, name: '田中 三郎' },
-        { id: 4, name: '田中 四郎' },
-        { id: 5, name: '田中 五郎' },
-        { id: 6, name: '田中 六郎' },
-        { id: 7, name: '田中 七郎' },
-        { id: 8, name: '田中 八郎' },
-        { id: 9, name: '田中 九郎' },
-        { id: 10, name: '田中 十郎' },
-        { id: 11, name: '田中 十一郎' },
-        { id: 12, name: '田中 十二郎' },
-        { id: 13, name: '田中 十三郎' },
-    ]
+// 工具を別の社員へ渡すときの相手選択。
+// 誰を選んでいるかは、色の変化だけでなく枠線の太さと「選択中」の文字で示す。
+const SelectUserModal = ({ isOpen, setIsOpen, rentalId, toolName, onTransferred }) => {
+    const { user } = useAuth()
+    // 閉じている間は取得しない
+    const load = useCallback(() => fetchEmployees(), [])
+    const { data: employees, loading, error, reload } = useFetch(load, { enabled: isOpen })
+
     const [selectedUser, setSelectedUser] = useState(null)
     const [isConfirmOpen, setIsConfirmOpen] = useState(false)
     const [isConfirmed, setIsConfirmed] = useState(false)
-        useEffect(() => {
-            if (isConfirmed) {
-                console.log('渡す処理を実行')
-                window.location.reload()
-            }
-        }, [isConfirmed])
+    const [saving, setSaving] = useState(false)
+    const [actionError, setActionError] = useState('')
+
+    useEffect(() => {
+        if (!isOpen) setSelectedUser(null)
+    }, [isOpen])
+
+    useEffect(() => {
+        if (!isConfirmed) return
+        const target = selectedUser
+        setIsConfirmed(false)
+        setIsConfirmOpen(false)
+        if (!target || saving) return
+        setSaving(true)
+        setActionError('')
+        transferRental({ rentalId, toEmployeeId: target.id })
+            .then(() => {
+                setSelectedUser(null)
+                onTransferred?.()
+            })
+            .catch((err) => setActionError(err.message))
+            .finally(() => setSaving(false))
+    }, [isConfirmed, selectedUser, saving, rentalId, onTransferred])
+
+    // 自分自身には渡せないので一覧から除く
+    const candidates = (employees ?? []).filter((e) => e.id !== user?.id)
 
     return (
         <>
-            <Transition appear show={isOpen} as={Fragment}>
-                <Dialog as="div" className="relative z-20" onClose={() => setIsOpen(false)}>
-                    <Transition.Child
-                        as={Fragment}
-                        enter="ease-out duration-300"
-                        enterFrom="opacity-0"
-                        enterTo="opacity-100"
-                        leave="ease-in duration-200"
-                        leaveFrom="opacity-100"
-                        leaveTo="opacity-0"
-                    >
-                        <div className="fixed inset-0 bg-black/25" />
-                    </Transition.Child>
-                    <Transition.Child
-                        as={Fragment}
-                        enter="ease-out duration-300"
-                        enterFrom="opacity-0"
-                        enterTo="opacity-100"
-                        leave="ease-in duration-200"
-                        leaveFrom="opacity-100"
-                        leaveTo="opacity-0"
-                    >
-                        <div className="fixed inset-0">
-                            <Dialog.Panel className={`h-2/3 min-w-72 border-8 bg-base border-main py-6 px-12 rounded-2xl flex flex-col items-center justify-center absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-bg`}>
-                                <div className="text-2xl font-bold">
-                                    ユーザー選択
-                                </div>
-                                <div className="overflow-y-auto flex gap-4 flex-col mt-4">
-                                    {users.map((user) => (
-                                        <div onClick={() => setSelectedUser(user)} key={user.id} className="flex items-center gap-4 w-96 border-2 rounded-full p-1">
-                                            <img src={`img/tmp/1.jpg`} alt={user.name} className="w-16 h-16 rounded-full" />
-                                            <span className="text-lg font-semibold">
-                                                {user.name}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                                {selectedUser && (
-                                    <div className="flex w-full pt-4">
-                                        <div className="text-center w-1/2">
-                                            <p className="text-lg font-semibold">選択されたユーザー</p>
-                                            <p className="text-xl">{selectedUser.name}</p>
-                                        </div>
-                                        <button onClick={() => setIsConfirmOpen(true)} className="py-2 rounded-lg font-extrabold bg-main text-base w-1/2">
-                                            渡す
-                                        </button>
-                                    </div>
-                                )}
-                            </Dialog.Panel>
+            <Modal
+                isOpen={isOpen}
+                setIsOpen={setIsOpen}
+                title="渡す相手を選ぶ"
+                subtitle={toolName}
+                maxWidth="max-w-3xl"
+                footer={
+                    <>
+                        {actionError && (
+                            <p role="alert" className="pb-3 text-lg font-bold text-accent">
+                                ✕ {actionError}
+                            </p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-4">
+                            <p className="flex-1 text-xl font-bold">
+                                <span className="mr-3 text-base text-sub">選択中</span>
+                                {selectedUser?.name ?? '未選択'}
+                            </p>
+                            <Button
+                                onClick={() => setIsConfirmOpen(true)}
+                                disabled={!selectedUser || saving}
+                            >
+                                {saving ? '処理中...' : 'この人に渡す'}
+                            </Button>
                         </div>
-                    </Transition.Child>
-                </Dialog>
-            </Transition>
-            <ConfirmModal isOpen={isConfirmOpen} setIsOpen={setIsConfirmOpen} text="本当に渡しますか？" yesText="はい" noText="いいえ" setBoolean={setIsConfirmed} borderColor="border-main" />
+                    </>
+                }
+            >
+                {loading ? (
+                    <Loading />
+                ) : error ? (
+                    <ErrorMessage message={error} onRetry={reload} />
+                ) : candidates.length === 0 ? (
+                    <Empty>渡せる社員がいません</Empty>
+                ) : (
+                    <ul className="flex flex-col gap-4">
+                        {candidates.map((employee) => {
+                            const isSelected = selectedUser?.id === employee.id
+                            return (
+                                <li key={employee.id}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedUser(employee)}
+                                        aria-pressed={isSelected}
+                                        className={`flex w-full items-center gap-4 rounded-2xl px-4 py-3 text-left ${
+                                            isSelected
+                                                ? 'border-4 border-main bg-field'
+                                                : 'border-2 border-ink bg-surface'
+                                        }`}
+                                    >
+                                        <img
+                                            src={
+                                                resolveImageUrl(employee.photoUrl) ||
+                                                '/img/tmp/tmp_icon.png'
+                                            }
+                                            alt=""
+                                            aria-hidden="true"
+                                            className="h-16 w-16 shrink-0 rounded-full border-2 border-ink object-cover"
+                                        />
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block text-2xl font-extrabold">
+                                                {employee.name}
+                                            </span>
+                                            <span className="block text-base text-sub">
+                                                {employee.team || '―'}
+                                            </span>
+                                        </span>
+                                        {isSelected && (
+                                            <span className="shrink-0 rounded-full bg-main px-4 py-1 text-base text-surface font-extrabold">
+                                                選択中
+                                            </span>
+                                        )}
+                                    </button>
+                                </li>
+                            )
+                        })}
+                    </ul>
+                )}
+            </Modal>
+
+            <ConfirmModal
+                isOpen={isConfirmOpen}
+                setIsOpen={setIsConfirmOpen}
+                text={`${selectedUser?.name ?? ''} に渡しますか？`}
+                yesText="渡す"
+                noText="やめる"
+                setBoolean={setIsConfirmed}
+            />
         </>
     )
 }

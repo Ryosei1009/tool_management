@@ -1,55 +1,124 @@
 @import "tailwindcss";
 
 /*
-  カラーパレットは大阪富士工業株式会社（ofic.co.jp）のコーポレートUIに準拠。
-  ・温かみのある黒 #23231E を本文に
-  ・主要アクションはコーポレートネイビー #2E3D4C
-  ・補助アクセントにスチールブルーグレー #8696A6
-  ・赤 #E60012 は強調・警告に限定
-  落ち着いた B2B 製造業らしい配色。
+  ■ デザイン方針：工場内での使用を前提としたユニバーサルデザイン
+
+  想定する使用環境
+    ・作業用手袋をしたままタッチする  → タップ領域は最小 64px（主要操作は 72px 以上）
+    ・保護メガネ・明るい照明・粉塵     → 文字は大きく、コントラストは WCAG AAA 寄り
+    ・立ったまま少し離れて見る         → 基準文字サイズ 20px、本文は 1rem 以上
+    ・急いでいる／片手がふさがる       → 主要操作は画面下部の大きなボタンに集約
+
+  色の使い方
+    ・色だけで情報を伝えない（状態はアイコン＋文字を必ず併記）
+    ・P型/D型色覚でも判別できるよう、良好=青、不良=橙、破損=赤 を採用し
+      赤と緑の対比に依存しない
+    ・ベースはコーポレートカラー（大阪富士工業）を踏襲しつつ、
+      本文の黒は #1A1A16 まで濃くしてコントラスト比を確保
 */
 @theme {
-  --color-base: #FFFFFF;      /* 背景・白 */
-  --color-ink: #23231E;       /* 本文テキスト（温かみのある黒） */
-  --color-accent: #E60012;    /* 差し色の赤（強調・警告、最小限に使用） */
-  --color-main: #23231E;      /* 主要アクション・アプリバー（OFIC実配色のほぼ黒） */
-  --color-steel: #8696A6;     /* スチールブルーグレー（補助アクセント） */
-  --color-sub: #595757;       /* サブテキスト */
-  --color-line: #DFE3E3;      /* 区切り線・境界（細いライトグレー罫線） */
+  /* 白。Tailwind 標準の文字サイズ `text-base` と名前が衝突しないよう
+     `base` ではなく `surface` にしている（衝突すると text-base が白文字になる）。 */
+  --color-surface: #FFFFFF;
+  --color-ink: #1A1A16;       /* 本文テキスト（白背景に対し 16.9:1） */
+  --color-accent: #C4000F;    /* 警告・返却など注意を要する操作（白文字で 7.4:1） */
+  --color-main: #1A1A16;      /* 主要アクション・アプリバー */
+  --color-steel: #4A5B6B;     /* 補助アクセント（白背景に対し 7.5:1） */
+  --color-sub: #4A4A45;       /* サブテキスト（白背景に対し 9.4:1） */
+  --color-line: #B8BFC4;      /* 区切り線・境界（細い線でも視認できる濃さ） */
+  --color-field: #F4F6F7;     /* 入力欄・情報ブロックの背景 */
 
-  /* 洗練されたゴシック体（端末標準の日本語フォントで代替、外部読込なし） */
+  /* 工具の「状態」色：赤と緑の対比を避け、色覚特性によらず区別できる組み合わせ */
+  --color-state-good: #0B5FA5;    /* 良好（青） */
+  --color-state-bad: #A85A00;     /* 不良（橙） */
+  --color-state-damaged: #C4000F; /* 破損（赤） */
+
+  /* 「貸出状況」色：枠線で一目で分かるようにする。
+     貸出中は --color-accent（赤）、貸出可能は下の緑。
+     色だけに頼らないよう、カードには必ず「貸出中 / 貸出可能」の文字も併記する。 */
+  --color-available: #1B7F3B;     /* 貸出可能（緑・白背景に対し 5.2:1） */
+
+  /* 太めのゴシック体（端末標準の日本語フォントで代替、外部読込なし） */
   --font-sans: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic",
     "YuGothic", "Meiryo", system-ui, sans-serif;
+
+  /* 手袋操作を前提としたタップ領域の最小値 */
+  --spacing-touch: 4rem;      /* 64px */
+  --spacing-touch-lg: 4.5rem; /* 72px */
 }
 
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
-    /* 基準サイズを引き上げ、文字とタッチ領域を全体的に拡大（iPad前提のユニバーサルデザイン）。
-       % 指定でブラウザの文字サイズ設定も尊重する。既定16px → 約18px */
-    font-size: 112.5%;
+    /* 立ったまま少し離れて見る前提で基準を引き上げる。
+       % 指定でブラウザの文字サイズ設定も尊重する。
+       ただし主用途のタブレット（iPad 等）に合わせるとスマートフォンでは大きすぎるため、
+       画面幅に応じて段階的に切り替える。 */
+    font-size: 100%;              /* スマートフォン: 16px */
+  }
+
+  @media (min-width: 480px) {
+    html { font-size: 112.5%; }   /* 大きめのスマートフォン: 18px */
+  }
+
+  @media (min-width: 768px) {
+    html { font-size: 125%; }     /* タブレット・PC（工場の主用途）: 20px */
   }
 
   body {
     font-family: var(--font-sans);
     color: var(--color-ink);
-    background-color: var(--color-base);
+    background-color: var(--color-surface);
     line-height: 1.7;              /* 読みやすい行間 */
     font-feature-settings: "palt"; /* 日本語の詰め組みで可読性向上 */
+    /* 明るい場所でも細く見えないよう、既定をやや太字寄りにする */
+    font-weight: 500;
   }
 
-  /* 濃色背景のユーティリティは白文字を既定にしてコントラストを確保（WCAG AA） */
+  /* 濃色背景のユーティリティは白文字を既定にしてコントラストを確保 */
   .bg-main,
   .bg-accent,
-  .bg-sub {
-    color: var(--color-base);
+  .bg-sub,
+  .bg-steel {
+    color: var(--color-surface);
   }
 
-  /* キーボード操作時のみフォーカスを明示（ユニバーサルデザイン） */
+  /* 手袋でも押せるように、操作要素の最小サイズを底上げする */
+  button,
+  [role="button"],
+  a.touch-target {
+    min-height: var(--spacing-touch);
+  }
+
+  /* 入力欄は指で狙える高さと、輪郭のはっきりした枠線を持たせる */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  textarea {
+    min-height: var(--spacing-touch);
+    font-size: 1rem;
+    background-color: var(--color-surface);
+  }
+
+  /* チェックボックスは手袋でも押せる大きさに */
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 2rem;
+    height: 2rem;
+    accent-color: var(--color-main);
+  }
+
+  /* フォーカスは常に強く出す（キーボードだけでなくタッチ操作の確認にも有効） */
   :focus-visible {
-    outline: 3px solid var(--color-main);
-    outline-offset: 2px;
+    outline: 4px solid var(--color-state-good);
+    outline-offset: 3px;
     border-radius: 4px;
+  }
+
+  /* 操作できない要素は色だけでなく明確に薄く見せる */
+  button:disabled,
+  [aria-disabled="true"] {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   /* アニメーションを控えたいユーザーへの配慮 */
@@ -62,5 +131,20 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+
+  /* OS のコントラスト強調設定に追従する */
+  @media (prefers-contrast: more) {
+    :root {
+      --color-line: #6B7278;
+      --color-sub: #2E2E2A;
+    }
+  }
+}
+
+@layer components {
+  /* 画面下部の固定ナビに隠れないための余白 */
+  .pb-nav {
+    padding-bottom: 9.5rem;
   }
 }

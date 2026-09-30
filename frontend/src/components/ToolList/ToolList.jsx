@@ -1,120 +1,145 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { sampleTools } from '../../data/sampleData'
+import React, { useCallback, useState } from 'react'
 import DetailModal from './DetailModal'
 import PageTitle from '../Util/PageTitle'
+import SearchBar from '../Util/SearchBar'
+import StateBadge from '../Util/StateBadge'
+import { fetchTools, resolveImageUrl } from '../../api'
+import { useFetch } from '../../hooks/useFetch'
+import { Empty, ErrorMessage, Loading } from '../Util/AsyncState'
 
-// 検索バー + フィルタ（借りる画面のヘッダーに合わせた配色）
-const SearchBar = ({ keyword, onChange }) => (
-    <div className="flex items-center gap-3 mb-6">
-        <div className="flex flex-1 items-center rounded-lg border border-line bg-base px-4 py-2">
-            <input
-                type="text"
-                value={keyword}
-                onChange={(e) => onChange(e.target.value)}
-                className="min-w-0 flex-1 bg-transparent font-semibold outline-none"
-            />
-            {/* 虫眼鏡アイコン */}
-            <svg
-                className="h-6 w-6 shrink-0 text-main"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-            >
-                <circle cx="11" cy="11" r="7" />
-                <line x1="16.5" y1="16.5" x2="21" y2="21" strokeLinecap="round" />
-            </svg>
-        </div>
-        <button
-            type="button"
-            aria-label="絞り込み"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line bg-base"
-        >
-            <svg className="h-6 w-6 text-main" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M3 4h18l-7 8v7l-4 2v-9L3 4z" />
-            </svg>
-        </button>
-    </div>
-)
-
-// 工具1件分のカード
-const ToolCard = ({ tool }) => {
-    const {
-        id,
-        name = '',
-        startDate = '',
-        endDate = '',
-        user = '',
-        place = '',
-        photoUrl = '',
-    } = tool ?? {}
-    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+// 工具1件分のカード。
+// カード全体がボタンなので、手袋でも狙いやすい。
+// 貸出状況は枠線の色（貸出中=赤 / 貸出可能=緑）で離れていても分かるようにし、
+// 色だけに頼らないよう「貸出中 / 貸出可能」の文字も必ず併記する。
+const ToolCard = ({ tool, onSelect }) => {
+    const { name, id, startDate, endDate, user, place, photoUrl, state, isRented } = tool
 
     return (
-        <>
-            <div
-                onClick={() => setIsDetailModalOpen(true)}
-                className="flex items-center gap-4 rounded-2xl border border-line bg-base px-4 py-3"
+        <li>
+            <button
+                type="button"
+                onClick={onSelect}
+                className={`flex w-full flex-wrap items-center gap-5 rounded-2xl border-4 bg-surface px-5 py-4 text-left ${
+                    isRented ? 'border-accent' : 'border-available'
+                }`}
             >
-                {/* 顔写真 / アイコン */}
-                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border border-line bg-base">
+                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border-2 border-line bg-field">
                     {photoUrl && (
-                        <img src={photoUrl} alt={name || 'アイコン'} className="h-full w-full object-cover" />
+                        <img
+                            src={resolveImageUrl(photoUrl)}
+                            alt=""
+                            aria-hidden="true"
+                            className="h-full w-full object-cover"
+                        />
                     )}
                 </div>
 
-                {/* 名前・期間 */}
-                <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-3">
-                        <span className="w-10 text-xs">名前</span>
-                        <span className="font-semibold truncate">{name || '○○　○○'}</span>
+                <div className="min-w-52 flex-1">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-2xl font-extrabold">{name}</span>
+                        <StateBadge state={state} />
                     </div>
-                    <div className="font-semibold truncate">
-                        {startDate || '1月1日'}～{endDate || '1月2日'}
+                    <div className="flex flex-wrap gap-x-8 text-lg font-bold">
+                        <span>
+                            <span className="mr-2 text-base font-medium text-sub">ID</span>
+                            {id}
+                        </span>
+                        <span>
+                            <span className="mr-2 text-base font-medium text-sub">置き場所</span>
+                            {place ?? '未設定'}
+                        </span>
                     </div>
                 </div>
 
-                {/* 使用者・使用場所 */}
-                <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-3">
-                        <span className="w-16 text-xs">使用者</span>
-                        <span className="font-semibold truncate">{user || '○○'}</span>
-                    </div>
-                    <div className="flex items-baseline gap-3">
-                        <span className="w-16 text-xs">使用場所</span>
-                        <span className="font-semibold truncate">{place || '○○'}</span>
-                    </div>
+                <div className="min-w-52 flex-1">
+                    {isRented ? (
+                        <>
+                            <p className="text-lg font-extrabold text-accent">貸出中</p>
+                            <div className="text-lg font-bold">
+                                <span className="mr-2 text-base font-medium text-sub">使用者</span>
+                                {user}
+                            </div>
+                            <div className="text-lg font-bold">
+                                <span className="mr-2 text-base font-medium text-sub">期間</span>
+                                {startDate} 〜 {endDate}
+                            </div>
+                        </>
+                    ) : (
+                        <p className="text-lg font-extrabold text-available">貸出可能</p>
+                    )}
                 </div>
-            </div>
-            <DetailModal
-                isOpen={isDetailModalOpen}
-                setIsOpen={setIsDetailModalOpen}
-            />
-        </>
+            </button>
+        </li>
     )
 }
 
-const ToolList = ({ tools = sampleTools }) => {
+const ToolList = () => {
     const [keyword, setKeyword] = useState('')
+    const [selectedId, setSelectedId] = useState(null)
+    const load = useCallback(() => fetchTools(), [])
+    const { data: tools, loading, error, reload } = useFetch(load)
 
+    // 検索はサーバー側にもあるが、入力のたびに叩かず取得済みの一覧から絞る
     const filtered = keyword
-        ? tools.filter((t) =>
-            [t.name, t.user, t.place].some((v) => (v ?? '').includes(keyword))
-        )
-        : tools
+        ? (tools ?? []).filter((t) =>
+              [t.name, t.id, t.user, t.place, t.category].some((v) => (v ?? '').includes(keyword))
+          )
+        : (tools ?? [])
 
     return (
-        <div className="flex items-start justify-center w-screen bg-base pb-24">
+        <div className="flex w-full items-start justify-center bg-surface pb-nav">
             <div className="w-full max-w-5xl px-6 pt-8">
-                <PageTitle en="TOOLS">工具リスト</PageTitle>
-                <SearchBar keyword={keyword} onChange={setKeyword} />
-                <div className="flex flex-col gap-5 mb-4">
-                    {filtered.map((tool, i) => (
-                        <ToolCard key={tool.id ?? i} tool={tool} />
-                    ))}
-                </div>
+                <PageTitle
+                    en="TOOLS"
+                    description="工具をタップすると、状態・点検日・使用履歴を確認できます。"
+                >
+                    工具リスト
+                </PageTitle>
+
+                <p className="mb-6 text-xl font-extrabold">
+                    {filtered.length} 件
+                    {keyword && (
+                        <span className="ml-2 text-base font-bold text-sub">
+                            （全 {(tools ?? []).length} 件中）
+                        </span>
+                    )}
+                </p>
+
+                <SearchBar
+                    keyword={keyword}
+                    onChange={setKeyword}
+                    label="工具を検索"
+                    placeholder="工具名 / ID / 使用者 で検索"
+                />
+
+                {loading ? (
+                    <Loading />
+                ) : error ? (
+                    <ErrorMessage message={error} onRetry={reload} />
+                ) : filtered.length === 0 ? (
+                    <Empty>該当する工具がありません</Empty>
+                ) : (
+                    <ul className="mb-4 flex flex-col gap-5">
+                        {filtered.map((tool) => (
+                            <ToolCard
+                                key={tool.id}
+                                tool={tool}
+                                onSelect={() => setSelectedId(tool.id)}
+                            />
+                        ))}
+                    </ul>
+                )}
             </div>
+
+            <DetailModal
+                isOpen={selectedId !== null}
+                setIsOpen={(open) => !open && setSelectedId(null)}
+                toolId={selectedId}
+                onUpdated={() => {
+                    setSelectedId(null)
+                    reload()
+                }}
+            />
         </div>
     )
 }

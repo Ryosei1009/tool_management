@@ -14,5 +14,14 @@ export default defineConfig({
   ],
   server: {
     host: true, // LAN内の他端末（iPad等）からアクセス可能にする
+    // フロントは HTTPS なので http の backend を直接叩くと mixed content で
+    // ブロックされる。/api を同一オリジンで受けて backend にプロキシする。
+    proxy: {
+      '/api': {
+        target: process.env.VITE_PROXY_TARGET ?? 'http://localhost:4000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
   },
 })
