@@ -100,7 +100,7 @@ const DefaultPinSection = ({ employee, onSaved }) => {
 const MyPage = () => {
     const load = useCallback(() => fetchMe(), [])
     const { data: employee, loading, error, reload } = useFetch(load)
-    const { reload: reloadAuth } = useAuth()
+    const { reload: reloadAuth, signOut } = useAuth()
 
     if (loading) return <Loading />
     if (error) return <ErrorMessage message={error} onRetry={reload} />
@@ -205,6 +205,11 @@ const MyPage = () => {
                         >
                             使い方ガイド・FAQ
                         </a>
+                        <div className="pt-6">
+                            <Button variant="secondary" size="md" onClick={signOut}>
+                                ログアウト
+                            </Button>
+                        </div>
                         <p className="pt-6 text-right text-base text-sub">工具管理アプリ ver1.0</p>
                     </div>
                 </div>

@@ -35,10 +35,9 @@ cd frontend && npm install && npm run dev
   mixed content でブロックされます。`vite.config.js` の `server.proxy` で `/api` を
   backend に中継しているので、`.env` の `VITE_API_BASE_URL` は `/api` のままにしてください
   （backend のポートを変える場合は `VITE_PROXY_TARGET` で指定できます）
-- ログイン画面はまだ無いため、`frontend/src/auth/AuthProvider.jsx` が起動時に
-  `.env` の `VITE_DEMO_EMPLOYEE_ID` / `VITE_DEMO_PASSWORD`（初期値は管理者の
-  `E-12345` / `password`）で自動ログインします。ログイン画面を作るときは
-  この自動ログインを外して `login()` を呼んでください
+- 起動時に保存済みトークンを確認し、無い・切れている場合はログイン画面
+  （`frontend/src/auth/LoginForm.jsx`）を表示します。初期ユーザーは管理者の
+  `E-12345` / `password` です（`backend/db/seed.js`）。ログアウトはマイページから
 
 ## 画面
 

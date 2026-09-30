@@ -1,25 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { AuthContext } from './AuthContext'
+import LoginForm from './LoginForm'
 import { checkToken, clearToken, fetchMe, getToken, login } from '../api'
 
-// この画面にはまだログイン UI が無いため、起動時に既定の社員で自動ログインする。
-// 使うアカウントは .env の VITE_DEMO_EMPLOYEE_ID / VITE_DEMO_PASSWORD で切り替えられる。
-// ログイン画面を作るときは、この自動ログインを外して login() を呼ぶだけでよい。
-const DEMO_ID = import.meta.env.VITE_DEMO_EMPLOYEE_ID ?? 'E-12345'
-const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? 'password'
-
-// 保存済みトークンが生きていればそれを使い、駄目なら既定アカウントでログインし直す
-const signIn = async () => {
-    if (getToken()) {
-        try {
-            await checkToken()
-            return await fetchMe()
-        } catch {
-            clearToken()
-        }
+// 保存済みトークンが生きていればそのユーザーを返す。無い・切れていれば null（ログイン画面へ）。
+// サーバーに繋がらないときはトークンを消さずに例外を投げ、再試行できるようにする。
+const restoreSession = async () => {
+    if (!getToken()) return null
+    try {
+        await checkToken()
+        return await fetchMe()
+    } catch (err) {
+        if (err.status === 0) throw err
+        clearToken()
+        return null
     }
-    await login(DEMO_ID, DEMO_PASSWORD)
-    return fetchMe()
 }
 
 const AuthProvider = ({ children }) => {
@@ -34,7 +29,7 @@ const AuthProvider = ({ children }) => {
         let ignore = false
         // effect の中で同期的に setState しないよう、状態更新は非同期側で行う
         Promise.resolve()
-            .then(signIn)
+            .then(restoreSession)
             .then((me) => {
                 if (ignore) return
                 setUser(me)
@@ -51,7 +46,20 @@ const AuthProvider = ({ children }) => {
         }
     }, [nonce])
 
-    const value = useMemo(() => ({ user, loading, error, reload }), [user, loading, error, reload])
+    const signIn = useCallback(async (id, password) => {
+        await login(id, password)
+        setUser(await fetchMe())
+    }, [])
+
+    const signOut = useCallback(() => {
+        clearToken()
+        setUser(null)
+    }, [])
+
+    const value = useMemo(
+        () => ({ user, loading, error, reload, signOut }),
+        [user, loading, error, reload, signOut]
+    )
 
     if (loading) {
         return (
@@ -66,7 +74,7 @@ const AuthProvider = ({ children }) => {
             <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center">
                 <p className="font-semibold text-red-600">{error}</p>
                 <p className="text-sm text-sub">
-                    backend が起動しているか、backend/.env の設定を確認してください。
+                    通信環境を確認して、もう一度お試しください。
                 </p>
                 <button
                     type="button"
@@ -78,6 +86,8 @@ const AuthProvider = ({ children }) => {
             </div>
         )
     }
+
+    if (!user) return <LoginForm onLogin={signIn} />
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

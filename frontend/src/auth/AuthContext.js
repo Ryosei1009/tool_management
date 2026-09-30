@@ -5,6 +5,7 @@ export const AuthContext = createContext({
     loading: true,
     error: '',
     reload: () => {},
+    signOut: () => {},
 })
 
 export const useAuth = () => useContext(AuthContext)
