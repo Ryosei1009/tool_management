@@ -5,9 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // https://vite.dev/config/
-export default defineConfig(({ command }) => ({
-  // 本番は既存の API サーバーに組み込み、https://api.shinoryo.com/tool/ で配信する
-  base: command === 'build' ? '/tool/' : '/',
+export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
@@ -32,4 +30,4 @@ export default defineConfig(({ command }) => ({
       },
     },
   },
-}))
+})
