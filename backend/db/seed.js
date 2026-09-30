@@ -12,10 +12,7 @@ const readJson = (name) => JSON.parse(fs.readFileSync(path.join(dataDir, name), 
 
 // tools.json の user 欄に出てくる社員をそのまま登録する
 const EMPLOYEES = [
-    { id: 'E-12345', name: '山田 太郎', team: '第一製造班', bloodType: 'A型', permission: '管理者' },
-    { id: 'E-12346', name: '佐藤 花子', team: '第一製造班', bloodType: 'O型', permission: '一般' },
-    { id: 'E-12347', name: '鈴木 一郎', team: '第二製造班', bloodType: 'B型', permission: '一般' },
-    { id: 'E-12348', name: '田中 次郎', team: '第二製造班', bloodType: 'AB型', permission: '一般' },
+    { id: 'E-00000', name: '大阪富士工業', team: '管理者', bloodType: '管理者', permission: '管理者' },
 ];
 const DEFAULT_PASSWORD = 'password';
 

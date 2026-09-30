@@ -6,6 +6,69 @@ import StateBadge from '../Util/StateBadge'
 import { fetchTools, resolveImageUrl } from '../../api'
 import { useFetch } from '../../hooks/useFetch'
 import { Empty, ErrorMessage, Loading } from '../Util/AsyncState'
+import { DEFAULT_SORT, SORT_OPTIONS, getSortOption, sortTools } from '../../utils/toolSort'
+
+// 並び替えの選択は端末ごとに覚えておく（保存できない環境では既定の並びで動く）
+const SORT_STORAGE_KEY = 'tool_management_tool_sort'
+
+const loadSort = () => {
+    try {
+        const saved = JSON.parse(localStorage.getItem(SORT_STORAGE_KEY))
+        if (SORT_OPTIONS.some((o) => o.value === saved?.by)) {
+            return { by: saved.by, desc: Boolean(saved.desc) }
+        }
+    } catch {
+        // 読めなければ既定の並びにする
+    }
+    return DEFAULT_SORT
+}
+
+const saveSort = (sort) => {
+    try {
+        localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(sort))
+    } catch {
+        // 保存できなくても並び替え自体は動くので無視する
+    }
+}
+
+// 並び替えの項目と向き。
+// 手袋でも操作できるよう、項目はネイティブの選択欄、向きは文字付きの大きなボタンにする。
+const SortControl = ({ sort, onChange }) => {
+    const [ascLabel, descLabel] = getSortOption(sort.by).directions
+    const current = sort.desc ? descLabel : ascLabel
+
+    return (
+        <div className="mb-6">
+            <label htmlFor="tool-sort" className="mb-2 block text-base font-bold text-sub">
+                並び替え
+            </label>
+            <div className="flex items-center gap-3">
+                <select
+                    id="tool-sort"
+                    value={sort.by}
+                    onChange={(e) => onChange({ ...sort, by: e.target.value })}
+                    className="min-h-touch min-w-0 flex-1 rounded-xl border-2 border-ink bg-surface px-4 text-lg font-bold"
+                >
+                    {SORT_OPTIONS.map(({ value, label }) => (
+                        <option key={value} value={value}>
+                            {label}
+                        </option>
+                    ))}
+                </select>
+                <button
+                    type="button"
+                    onClick={() => onChange({ ...sort, desc: !sort.desc })}
+                    aria-label={`並びの向き：${current}（押すと切り替え）`}
+                    className="min-h-touch shrink-0 rounded-xl border-2 border-ink px-5 text-lg font-extrabold"
+                >
+                    <span aria-hidden="true">
+                        {sort.desc ? '↓' : '↑'} {current}
+                    </span>
+                </button>
+            </div>
+        </div>
+    )
+}
 
 // 工具1件分のカード。
 // カード全体がボタンなので、手袋でも狙いやすい。
@@ -76,15 +139,24 @@ const ToolCard = ({ tool, onSelect }) => {
 const ToolList = () => {
     const [keyword, setKeyword] = useState('')
     const [selectedId, setSelectedId] = useState(null)
+    const [sort, setSort] = useState(loadSort)
     const load = useCallback(() => fetchTools(), [])
     const { data: tools, loading, error, reload } = useFetch(load)
 
+    const changeSort = (next) => {
+        setSort(next)
+        saveSort(next)
+    }
+
     // 検索はサーバー側にもあるが、入力のたびに叩かず取得済みの一覧から絞る
-    const filtered = keyword
-        ? (tools ?? []).filter((t) =>
-              [t.name, t.id, t.user, t.place, t.category].some((v) => (v ?? '').includes(keyword))
-          )
-        : (tools ?? [])
+    const filtered = sortTools(
+        keyword
+            ? (tools ?? []).filter((t) =>
+                  [t.name, t.id, t.user, t.place, t.category].some((v) => (v ?? '').includes(keyword))
+              )
+            : (tools ?? []),
+        sort
+    )
 
     return (
         <div className="flex w-full items-start justify-center bg-surface pb-nav">
@@ -111,6 +183,8 @@ const ToolList = () => {
                     label="工具を検索"
                     placeholder="工具名 / ID / 使用者 で検索"
                 />
+
+                <SortControl sort={sort} onChange={changeSort} />
 
                 {loading ? (
                     <Loading />

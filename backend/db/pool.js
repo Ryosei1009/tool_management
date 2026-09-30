@@ -1,7 +1,5 @@
 const mysql = require('mysql2');
 
-// 参照元（Portfolio）はルートごとに createConnection していたが、
-// ここでは接続断からの復帰と同時実行のためにプールを共有する。
 const pool = mysql.createPool({
     host: process.env.MYSQL_HOST,
     port: Number(process.env.MYSQL_PORT || 3306),
