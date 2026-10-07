@@ -9,7 +9,7 @@ import { Empty, ErrorMessage, Loading } from './AsyncState'
 
 // 工具を別の社員へ渡すときの相手選択。
 // 誰を選んでいるかは、色の変化だけでなく枠線の太さと「選択中」の文字で示す。
-const SelectUserModal = ({ isOpen, setIsOpen, rentalId, toolName, onTransferred }) => {
+const SelectUserModal = ({ isOpen, setIsOpen, rentalId, toolName, currentUserId, onTransferred }) => {
     const { user } = useAuth()
     // 閉じている間は取得しない
     const load = useCallback(() => fetchEmployees(), [])
@@ -42,8 +42,9 @@ const SelectUserModal = ({ isOpen, setIsOpen, rentalId, toolName, onTransferred 
             .finally(() => setSaving(false))
     }, [isConfirmed, selectedUser, saving, rentalId, onTransferred])
 
-    // 自分自身には渡せないので一覧から除く
-    const candidates = (employees ?? []).filter((e) => e.id !== user?.id)
+    // 今借りている人には渡せないので一覧から除く（代理で操作しているときは借りている本人）
+    const holderId = currentUserId ?? user?.id
+    const candidates = (employees ?? []).filter((e) => e.id !== holderId)
 
     return (
         <>

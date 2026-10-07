@@ -33,7 +33,7 @@ const Modal = ({ isOpen, setIsOpen, title, subtitle, footer, children, maxWidth 
                     <Dialog.Panel
                         className={`flex max-h-[92vh] w-full ${maxWidth} flex-col overflow-hidden rounded-2xl border-4 border-main bg-surface`}
                     >
-                        <div className="flex shrink-0 flex-wrap items-center justify-between gap-4 bg-main px-5 py-4">
+                        <div className="flex shrink-0 flex-wrap items-center justify-between gap-4 bg-main px-5 py-3">
                             <div className="flex flex-wrap items-baseline gap-4">
                                 <Dialog.Title className="text-2xl font-extrabold">
                                     {title}
@@ -51,10 +51,10 @@ const Modal = ({ isOpen, setIsOpen, title, subtitle, footer, children, maxWidth 
                             </button>
                         </div>
 
-                        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">{children}</div>
+                        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
 
                         {footer && (
-                            <div className="shrink-0 border-t-2 border-line px-5 py-5">{footer}</div>
+                            <div className="shrink-0 border-t-2 border-line px-5 py-4">{footer}</div>
                         )}
                     </Dialog.Panel>
                 </Transition.Child>

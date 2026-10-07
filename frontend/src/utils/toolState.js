@@ -2,7 +2,6 @@
 export const TOOL_STATES = [
     { value: 'good', label: '良好' },
     { value: 'bad', label: '不良' },
-    { value: 'damaged', label: '破損' },
 ]
 
 export const getToolState = (state) =>

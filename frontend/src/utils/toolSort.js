@@ -6,8 +6,10 @@
 const collator = new Intl.Collator('ja', { numeric: true })
 const text = (a, b) => collator.compare(a ?? '', b ?? '')
 
-// 状態は「問題があるもの」から見たいので 破損 → 不良 → 良好 を昇順とする
-const STATE_ORDER = { damaged: 0, bad: 1, good: 2 }
+// 状態は「問題があるもの」から見たいので 不良 → 良好 を昇順とする
+const STATE_ORDER = { bad: 0, good: 1 }
+// 不良の中では、対応が必要なもの（要買い替え → 交換待ち → 要修理 → 軽微）から
+const RANK_ORDER = { replace: 0, waiting: 1, repair: 2, minor: 3 }
 
 const TEXT = ['昇順', '降順']
 const DATE = ['古い順', '新しい順']
@@ -15,10 +17,16 @@ const DATE = ['古い順', '新しい順']
 export const SORT_OPTIONS = [
     { value: 'id', label: 'ID', directions: TEXT, compare: (a, b) => text(a.id, b.id) },
     { value: 'name', label: '工具名', directions: TEXT, compare: (a, b) => text(a.name, b.name) },
-    { value: 'category', label: '種類', directions: TEXT, compare: (a, b) => text(a.category, b.category) },
+    {
+        value: 'category',
+        label: '大項目',
+        directions: TEXT,
+        key: (t) => t.category,
+        compare: (a, b) => text(a.category, b.category),
+    },
     {
         value: 'place',
-        label: '置き場所',
+        label: '持ち出し場所',
         directions: TEXT,
         key: (t) => t.place,
         compare: (a, b) => text(a.place, b.place),
@@ -26,8 +34,18 @@ export const SORT_OPTIONS = [
     {
         value: 'state',
         label: '状態',
-        directions: ['破損・不良が先', '良好が先'],
-        compare: (a, b) => (STATE_ORDER[a.state] ?? 9) - (STATE_ORDER[b.state] ?? 9),
+        directions: ['不良が先', '良好が先'],
+        compare: (a, b) =>
+            (STATE_ORDER[a.state] ?? 9) - (STATE_ORDER[b.state] ?? 9) ||
+            (RANK_ORDER[a.defectRank] ?? 9) - (RANK_ORDER[b.defectRank] ?? 9),
+    },
+    {
+        // 買い替えの検討用：古いものから並べる
+        value: 'purchaseDate',
+        label: '購入日（経過年数）',
+        directions: ['古い順', '新しい順'],
+        key: (t) => t.purchaseDate,
+        compare: (a, b) => text(a.purchaseDate, b.purchaseDate),
     },
     {
         value: 'rented',
@@ -40,7 +58,8 @@ export const SORT_OPTIONS = [
         label: '返却予定日',
         directions: ['早い順', '遅い順'],
         key: (t) => t.rentEnd,
-        compare: (a, b) => text(a.rentEnd, b.rentEnd),
+        compare: (a, b) =>
+            text(`${a.rentEnd}${a.rentEndPeriod === 'am' ? 0 : 1}`, `${b.rentEnd}${b.rentEndPeriod === 'am' ? 0 : 1}`),
     },
     {
         value: 'user',

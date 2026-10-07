@@ -13,11 +13,11 @@ const SearchBar = ({
     placeholder = '名前 / ID で検索',
     srLabel,
 }) => (
-    <div className="mb-6">
+    <div className="mb-4">
         <label
             htmlFor="search"
             className={
-                label ? 'mb-2 block text-base font-bold text-sub' : 'sr-only'
+                label ? 'block text-base font-bold text-sub' : 'sr-only'
             }
         >
             {label || srLabel || placeholder}

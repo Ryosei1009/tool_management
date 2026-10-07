@@ -5,6 +5,7 @@ const db = require('../db/pool').promise;
 const { authenticate, requireAdmin } = require('../middleware/auth');
 const { getMapName } = require('../utils/map');
 const { toEmployeeResponse } = require('../utils/format');
+const { toFullDateTime } = require('../utils/time');
 
 // 社員一覧（「渡す」のユーザー選択・社員一覧画面）
 // 社員一覧画面で使うので、貸出中の件数も一緒に返す。
@@ -34,22 +35,28 @@ router.get('/me', authenticate, async (req, res) => {
         if (!employee) return res.status(404).send('社員が見つかりません。');
 
         const [histories] = await db.query(
-            `SELECT r.start_date, t.name AS tool_name, t.pin_x, t.pin_y
+            `SELECT r.start_date, r.taken_at, r.returned_at, r.status, r.taken_by, r.employee_id,
+                    t.name AS tool_name, t.pin_x, t.pin_y, tb.name AS taken_by_name
                FROM rentals r
                JOIN tools t ON t.id = r.tool_id
-              WHERE r.employee_id = ?
-              ORDER BY r.start_date DESC, r.id DESC
+               LEFT JOIN employees tb ON tb.id = r.taken_by
+              WHERE r.employee_id = ? AND r.status IN ('renting', 'returned')
+              ORDER BY COALESCE(r.taken_at, r.start_date) DESC, r.id DESC
               LIMIT 50`,
             [req.user.id]
         );
 
         res.json({
             ...toEmployeeResponse(employee),
-            // 「2026/06/30　プラスドライバー（A4）」の形式で返す
+            // 「2026/06/30 9:05　プラスドライバー（A4）　〜 2026/07/01 16:30 返却」の形式で返す
             histories: histories.map((h) => {
-                const date = String(h.start_date).slice(0, 10).replace(/-/g, '/');
+                const taken = toFullDateTime(h.taken_at) || String(h.start_date).slice(0, 10).replace(/-/g, '/');
                 const place = getMapName(Number(h.pin_x), Number(h.pin_y));
-                return `${date}　${h.tool_name}${place ? `（${place}）` : ''}`;
+                const returned = h.status === 'returned' ? toFullDateTime(h.returned_at) : '';
+                const proxy = h.taken_by && h.taken_by !== h.employee_id ? `（代理：${h.taken_by_name}）` : '';
+                return `${taken}　${h.tool_name}${place ? `（${place}）` : ''}${proxy}${
+                    h.status === 'renting' ? '　貸出中' : returned ? `　〜 ${returned} 返却` : ''
+                }`;
             }),
         });
     } catch (err) {

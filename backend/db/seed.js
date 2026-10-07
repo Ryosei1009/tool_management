@@ -27,6 +27,7 @@ const jpDateToIso = (value) => {
 const main = async () => {
     const tools = readJson('tools.json');
     const rentItems = readJson('rentItems.json');
+    const inspectionItems = readJson('inspectionItems.json');
 
     // 全削除してから入れ直すため、途中で失敗・中断しても「消えただけ」の
     // 状態が残らないよう、1つのトランザクションにまとめる。
@@ -35,6 +36,10 @@ const main = async () => {
 
     try {
         // 外部キーがあるので子テーブルから消す
+        await conn.query('DELETE FROM tool_change_logs');
+        await conn.query('DELETE FROM inspections');
+        await conn.query('DELETE FROM tool_inspection_items');
+        await conn.query('DELETE FROM inspection_items');
         await conn.query('DELETE FROM rentals');
         await conn.query('DELETE FROM tools');
         await conn.query('DELETE FROM employees');
@@ -51,21 +56,42 @@ const main = async () => {
 
         for (const t of tools) {
             await conn.query(
-                `INSERT INTO tools (id, name, category, photo_url, state, pin_x, pin_y, last_inspection_date)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO tools
+                   (id, name, category, photo_url, state, defect_rank, defect_note,
+                    pin_x, pin_y, purchase_date, last_inspection_date)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     t.id,
                     t.name,
                     t.category ?? null,
                     t.photoUrl ?? null,
                     t.state ?? 'good',
+                    t.defectRank ?? null,
+                    t.defectNote ?? null,
                     t.pin?.x ?? null,
                     t.pin?.y ?? null,
+                    t.purchaseDate || null,
                     t.lastInspectionDate || null,
                 ]
             );
         }
         console.log(`工具 ${tools.length} 件を登録しました。`);
+
+        // 点検項目マスタと、大項目ごとの割り当て
+        for (const [i, item] of inspectionItems.entries()) {
+            const [result] = await conn.query(
+                'INSERT INTO inspection_items (name, sort_order) VALUES (?, ?)',
+                [item.name, i + 1]
+            );
+            const targets = tools.filter((t) => item.categories.includes(t.category));
+            for (const t of targets) {
+                await conn.query('INSERT INTO tool_inspection_items (tool_id, item_id) VALUES (?, ?)', [
+                    t.id,
+                    result.insertId,
+                ]);
+            }
+        }
+        console.log(`点検項目 ${inspectionItems.length} 件を登録しました。`);
 
         // 「現在貸出中」の貸出を作る。
         // ・tools.json … 各工具の user / startDate / endDate（工具リスト画面のサンプル）
@@ -83,7 +109,8 @@ const main = async () => {
             if (!employeeId || !start || !end) continue;
             rentals.set(t.id, { toolId: t.id, employeeId, start, end });
         }
-        for (const item of rentItems) {
+        // 山田 太郎が社員に登録されていない（本番用の初期データ）ときは入れない
+        for (const item of yamada ? rentItems : []) {
             const start = jpDateToIso(item.startDate);
             const end = jpDateToIso(item.endDate);
             if (!start || !end) continue;
@@ -92,9 +119,11 @@ const main = async () => {
 
         for (const r of rentals.values()) {
             await conn.query(
-                `INSERT INTO rentals (tool_id, employee_id, start_date, end_date, status)
-                 VALUES (?, ?, ?, ?, 'renting')`,
-                [r.toolId, r.employeeId, r.start, r.end]
+                `INSERT INTO rentals
+                   (tool_id, employee_id, start_date, start_period, end_date, end_period,
+                    status, taken_at, taken_by)
+                 VALUES (?, ?, ?, 'am', ?, 'pm', 'renting', ?, ?)`,
+                [r.toolId, r.employeeId, r.start, r.end, `${r.start} 09:00:00`, r.employeeId]
             );
         }
         console.log(`貸出中 ${rentals.size} 件を登録しました。`);

@@ -41,7 +41,7 @@ const MapPicker = ({ pin, setPin, label = '場所', src = publicUrl('/img/map.pn
             </button>
 
             <div className="mt-3 flex items-baseline gap-3 border-b-2 border-dashed border-line pb-2">
-                <span className="w-20 shrink-0 text-base text-sub">{label}</span>
+                <span className="shrink-0 text-base text-sub">{label}</span>
                 <span className="text-2xl font-extrabold">{place ?? '未設定'}</span>
             </div>
 

@@ -22,6 +22,7 @@ api.use('/auth/', require('./routes/Auth'));
 api.use('/tools/', require('./routes/Tools'));
 api.use('/rentals/', require('./routes/Rentals'));
 api.use('/employees/', require('./routes/Employees'));
+api.use('/inspection-items/', require('./routes/InspectionItems'));
 
 api.use((req, res) => res.status(404).send('エンドポイントが見つかりません。'));
 

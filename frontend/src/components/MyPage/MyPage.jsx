@@ -24,7 +24,7 @@ const SubHeading = ({ children }) => (
     </h2>
 )
 
-// 工具を借りるときの既定の置き場所。
+// 工具を借りるときの既定の持ち出し場所。
 // 毎回マップを操作しなくて済むよう、自分の持ち場を1度だけ登録しておく。
 const DefaultPinSection = ({ employee, onSaved }) => {
     const [pin, setPin] = useState(employee.defaultPin)
@@ -45,7 +45,7 @@ const DefaultPinSection = ({ employee, onSaved }) => {
         setMessage('')
         try {
             await updateDefaultPin(value)
-            setMessage(value ? '既定の置き場所を保存しました。' : '既定の置き場所を解除しました。')
+            setMessage(value ? '既定の持ち出し場所を保存しました。' : '既定の持ち出し場所を解除しました。')
             onSaved?.()
         } catch (err) {
             setError(err.message)
@@ -56,13 +56,13 @@ const DefaultPinSection = ({ employee, onSaved }) => {
 
     return (
         <div className="px-5 pt-8">
-            <SubHeading>工具を借りるときの置き場所</SubHeading>
+            <SubHeading>工具を借りるときの持ち出し場所</SubHeading>
             <p className="pb-4 text-base text-sub">
                 ここで登録した場所が、工具を借りるときの初期値になります。自分の持ち場を選んでください。
             </p>
 
             <div className="max-w-xl">
-                <MapPicker pin={pin} setPin={setPin} label="既定の置き場所" />
+                <MapPicker pin={pin} setPin={setPin} label="既定の持ち出し場所" />
             </div>
 
             {message && (
@@ -148,7 +148,7 @@ const MyPage = () => {
                         </div>
                     </div>
 
-                    {/* 既定の置き場所 */}
+                    {/* 既定の持ち出し場所 */}
                     {employee && (
                         <DefaultPinSection
                             employee={employee}
@@ -191,6 +191,12 @@ const MyPage = () => {
                                     className="touch-target inline-flex items-center gap-3 rounded-xl border-2 border-ink bg-surface px-8 text-xl font-extrabold text-ink"
                                 >
                                     社員一覧
+                                </Link>
+                                <Link
+                                    to="/inspection-items"
+                                    className="touch-target inline-flex items-center gap-3 rounded-xl border-2 border-ink bg-surface px-8 text-xl font-extrabold text-ink"
+                                >
+                                    点検項目の管理
                                 </Link>
                             </div>
                         </div>

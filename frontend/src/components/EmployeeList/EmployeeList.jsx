@@ -9,6 +9,7 @@ import { deleteEmployee, fetchEmployees, resolveImageUrl } from '../../api'
 import { useFetch } from '../../hooks/useFetch'
 import { Empty, ErrorMessage, Loading } from '../Util/AsyncState'
 import { useAuth } from '../../auth/AuthContext'
+import { matchesKeyword } from '../../utils/search'
 
 // 社員1件分のカード。
 // 権限は色ではなく文字と枠で区別し、貸出中の件数も件数そのものを表示する。
@@ -16,8 +17,8 @@ const EmployeeCard = ({ employee, isMe, canEdit, onEdit, onDelete }) => {
     const { name, id, team, permission, photoUrl, defaultPlace, rentingCount } = employee
 
     return (
-        <li className="flex flex-wrap items-center gap-5 rounded-2xl border-2 border-ink bg-surface px-5 py-4">
-            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-2 border-ink bg-field">
+        <li className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border-2 border-ink bg-surface px-4 py-3">
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-ink bg-field">
                 <img
                     src={resolveImageUrl(photoUrl || '/img/tmp/tmp_icon.png')}
                     alt=""
@@ -57,7 +58,7 @@ const EmployeeCard = ({ employee, isMe, canEdit, onEdit, onDelete }) => {
                 </div>
                 <div className="flex flex-wrap gap-x-8 gap-y-1 text-lg font-bold">
                     <span>
-                        <span className="mr-2 text-base font-medium text-sub">既定の置き場所</span>
+                        <span className="mr-2 text-base font-medium text-sub">既定の持ち出し場所</span>
                         {defaultPlace ?? '未設定'}
                     </span>
                     <span>
@@ -129,14 +130,14 @@ const EmployeeList = () => {
 
     const filtered = keyword
         ? (employees ?? []).filter((e) =>
-              [e.name, e.id, e.team, e.permission].some((v) => (v ?? '').includes(keyword))
+              matchesKeyword(keyword, [e.name, e.id, e.team, e.permission])
           )
         : (employees ?? [])
 
     return (
         <>
             <div className="flex w-full items-start justify-center bg-surface pb-nav">
-                <div className="w-full max-w-5xl px-6 pt-8">
+                <div className="w-full max-w-5xl px-6 pt-6">
                     <PageTitle
                         en="EMPLOYEES"
                         description={
@@ -148,7 +149,7 @@ const EmployeeList = () => {
                         社員一覧
                     </PageTitle>
 
-                    <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
                         <p className="text-xl font-extrabold">
                             {filtered.length} 名
                             {keyword && (
@@ -189,7 +190,7 @@ const EmployeeList = () => {
                     ) : filtered.length === 0 ? (
                         <Empty>該当する社員がいません</Empty>
                     ) : (
-                        <ul className="flex flex-col gap-5">
+                        <ul className="flex flex-col gap-3">
                             {filtered.map((employee) => (
                                 <EmployeeCard
                                     key={employee.id}
@@ -212,6 +213,7 @@ const EmployeeList = () => {
                 isOpen={editing !== null}
                 setIsOpen={(open) => !open && setEditing(null)}
                 employee={editing === 'new' ? null : editing}
+                teams={[...new Set((employees ?? []).map((e) => e.team).filter(Boolean))]}
                 onSaved={() => {
                     setEditing(null)
                     setMessage('保存しました。')

@@ -4,8 +4,12 @@ import PageTitle from '../Util/PageTitle'
 import Button from '../Util/Button'
 import ConfirmModal from '../Util/ConfirmModal'
 import MapPicker from '../Util/MapPicker'
+import DefectFields from '../Util/DefectFields'
+import ChoiceInput from '../Util/ChoiceInput'
 import { TOOL_STATES } from '../../utils/toolState'
-import { createTool, resolveImageUrl, uploadToolImage } from '../../api'
+import { getCategories, getPurchaseAge } from '../../utils/toolInfo'
+import { createTool, fetchInspectionItems, fetchTools, resolveImageUrl, uploadToolImage } from '../../api'
+import { useFetch } from '../../hooks/useFetch'
 
 const inputClass =
     'w-full rounded-xl border-2 border-ink bg-surface px-4 text-xl font-bold outline-none'
@@ -22,7 +26,18 @@ const Field = ({ id, label, required, hint, children }) => (
     </div>
 )
 
-const EMPTY = { name: '', id: '', state: 'good', pin: null, photoUrl: '' }
+const EMPTY = {
+    name: '',
+    id: '',
+    category: '',
+    purchaseDate: '',
+    state: 'good',
+    defectRank: null,
+    defectNote: '',
+    pin: null,
+    photoUrl: '',
+    inspectionItemIds: [],
+}
 
 const NewTool = () => {
     const [tool, setTool] = useState(EMPTY)
@@ -34,6 +49,14 @@ const NewTool = () => {
     const [error, setError] = useState('')
     const [message, setMessage] = useState('')
     const qrRef = useRef(null)
+
+    // 大項目の候補（既存の工具から）と、点検項目の選択肢
+    const loadTools = useCallback(() => fetchTools(), [])
+    const { data: tools } = useFetch(loadTools)
+    const categories = getCategories(tools)
+    const loadItems = useCallback(() => fetchInspectionItems(), [])
+    const { data: inspectionItems } = useFetch(loadItems)
+    const age = getPurchaseAge(tool.purchaseDate)
 
     // QRコードを {ID}.png としてダウンロードする
     const handleDownload = () => {
@@ -66,9 +89,14 @@ const NewTool = () => {
             await createTool({
                 id: tool.id,
                 name: tool.name,
+                category: tool.category.trim(),
+                purchaseDate: tool.purchaseDate || null,
                 state: tool.state,
+                defectRank: tool.state === 'good' ? null : tool.defectRank,
+                defectNote: tool.state === 'good' ? '' : tool.defectNote,
                 pin: tool.pin,
                 photoUrl,
+                inspectionItemIds: tool.inspectionItemIds,
             })
             setIsConfirmOpen(false)
             setMessage(`「${tool.name}」（${tool.id}）を追加しました。QRコードを印刷して貼り付けてください。`)
@@ -81,7 +109,7 @@ const NewTool = () => {
         } finally {
             setSubmitting(false)
         }
-    }, [file, tool.id, tool.name, tool.state, tool.pin, tool.photoUrl])
+    }, [file, tool])
 
     useEffect(() => {
         if (!isConfirmed) return
@@ -132,6 +160,36 @@ const NewTool = () => {
                             />
                         </Field>
 
+                        <Field
+                            id="tool-category"
+                            label="大項目"
+                            hint="工具リストの絞り込みに使います。一覧に無いときは「新しく入力する」を選んでください。"
+                        >
+                            <ChoiceInput
+                                id="tool-category"
+                                value={tool.category}
+                                options={categories}
+                                maxLength={32}
+                                placeholder="切断工具"
+                                onChange={(category) => setTool({ ...tool, category })}
+                                className={inputClass}
+                            />
+                        </Field>
+
+                        <Field
+                            id="tool-purchase"
+                            label="購入日"
+                            hint={age ? `購入から ${age.label}` : '経過年数を買い替えの参考にします。'}
+                        >
+                            <input
+                                id="tool-purchase"
+                                type="date"
+                                value={tool.purchaseDate}
+                                onChange={(e) => setTool({ ...tool, purchaseDate: e.target.value })}
+                                className={inputClass}
+                            />
+                        </Field>
+
                         <Field id="tool-new-state" label="現在の状態">
                             <select
                                 id="tool-new-state"
@@ -146,6 +204,15 @@ const NewTool = () => {
                                 ))}
                             </select>
                         </Field>
+
+                        {tool.state !== 'good' && (
+                            <DefectFields
+                                idPrefix="new-tool"
+                                rank={tool.defectRank}
+                                note={tool.defectNote}
+                                onChange={({ rank, note }) => setTool({ ...tool, defectRank: rank, defectNote: note })}
+                            />
+                        )}
 
                         <Field id="tool-photo" label="写真">
                             <img
@@ -165,13 +232,45 @@ const NewTool = () => {
 
                     <div className="flex flex-col gap-6">
                         <div>
-                            <p className="pb-2 text-lg font-bold">置き場所</p>
+                            <p className="pb-2 text-lg font-bold">持ち出し場所</p>
                             <MapPicker
                                 pin={tool.pin}
                                 setPin={(pin) => setTool({ ...tool, pin })}
-                                label="置き場所"
+                                label="持ち出し場所"
                             />
                         </div>
+
+                        <fieldset className="rounded-xl border-2 border-line p-5">
+                            <legend className="px-1 text-lg font-bold">点検項目</legend>
+                            {(inspectionItems ?? []).length === 0 ? (
+                                <p className="text-base text-sub">
+                                    点検項目がまだありません。マイページの「点検項目の管理」から追加できます。
+                                </p>
+                            ) : (
+                                <div className="flex flex-col gap-1">
+                                    {inspectionItems.map((item) => {
+                                        const checked = tool.inspectionItemIds.includes(item.id)
+                                        return (
+                                            <label key={item.id} className="flex min-h-touch items-center gap-4">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={checked}
+                                                    onChange={() =>
+                                                        setTool({
+                                                            ...tool,
+                                                            inspectionItemIds: checked
+                                                                ? tool.inspectionItemIds.filter((id) => id !== item.id)
+                                                                : [...tool.inspectionItemIds, item.id],
+                                                        })
+                                                    }
+                                                />
+                                                <span className="text-lg font-bold">{item.name}</span>
+                                            </label>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </fieldset>
 
                         <div className="rounded-xl border-2 border-line bg-field p-5">
                             <p className="pb-3 text-lg font-bold">QRコード</p>

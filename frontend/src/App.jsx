@@ -7,6 +7,7 @@ import Rent from './components/Rent/Rent'
 import MyPage from './components/MyPage/MyPage'
 import NewTool from './components/NewTool/NewTool'
 import EmployeeList from './components/EmployeeList/EmployeeList'
+import InspectionItems from './components/InspectionItems/InspectionItems'
 import AuthProvider from './auth/AuthProvider'
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
             <Route path="/mypage" element={<MyPage />} />
             <Route path="/newtool" element={<NewTool />} />
             <Route path="/employees" element={<EmployeeList />} />
+            <Route path="/inspection-items" element={<InspectionItems />} />
           </Routes>
           <Footer />
         </main>

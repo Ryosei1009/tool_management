@@ -137,9 +137,6 @@ const QRReader = ({ onScan, isScanning = true }) => {
 					</div>
 				) : (
 					<div className='flex w-full max-w-md flex-col items-center gap-3'>
-						<p className='text-center text-xl font-bold'>
-							工具のQRコードを枠内に写してください
-						</p>
 						{/* video は絶対配置なので、必ず relative な親の中に閉じ込める。
 						    外に出すと画面全体に広がってレイアウトを壊す。 */}
 						<div className='relative w-full overflow-hidden'>

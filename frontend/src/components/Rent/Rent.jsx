@@ -12,6 +12,7 @@ const Rent = () => {
     const [isModalOpen, setIsModalOpen] = useState(false)
     // 貸出後に検索リストを取り直すためのキー
     const [reloadKey, setReloadKey] = useState(0)
+    const [message, setMessage] = useState('')
 
     // QR検出・検索選択のたびにモーダルを開く（同じ工具の再読み取りでも開く）
     const handleSelect = (id) => {
@@ -22,10 +23,15 @@ const Rent = () => {
     return (
         <>
             <div className="w-full bg-surface pb-nav">
-                <div className="px-6 pt-8">
-                    <PageTitle en="RENT">
+                <div className="px-6 pt-6">
+                    <PageTitle en="RENT" description="">
                         工具を借りる
                     </PageTitle>
+                    {message && (
+                        <p role="status" className="mb-4 text-lg font-bold text-state-good">
+                            {message}
+                        </p>
+                    )}
                 </div>
                 <div className="flex flex-wrap items-stretch">
                     <div className="w-full lg:w-1/2">
@@ -36,9 +42,9 @@ const Rent = () => {
                         <QRReader onScan={handleSelect} isScanning={!isModalOpen} />
                     </div>
                     <div className="w-full border-t-4 border-line lg:w-1/2 lg:border-l-4 lg:border-t-0">
-                        <h2 className="px-6 pb-2 text-2xl font-extrabold">
-                            一覧から選ぶ
-                        </h2>
+                        {/* <h2 className="px-6 pb-2 text-2xl font-extrabold">
+                            工具検索
+                        </h2> */}
                         <ToolSearch key={reloadKey} setResult={handleSelect} />
                     </div>
                 </div>
@@ -47,7 +53,14 @@ const Rent = () => {
                 isOpen={isModalOpen}
                 setIsOpen={setIsModalOpen}
                 toolId={result}
-                onRented={() => setReloadKey((k) => k + 1)}
+                onRented={({ mode, toolName, proxyName }) => {
+                    setReloadKey((k) => k + 1)
+                    setMessage(
+                        `${toolName} を${proxyName ? `${proxyName} さんの代わりに` : ''}${
+                            mode === 'rent' ? '借りました。' : '予約しました。'
+                        }「借りているもの」で確認できます。`
+                    )
+                }}
             />
         </>
     )

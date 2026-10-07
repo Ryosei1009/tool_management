@@ -3,7 +3,11 @@ import DetailModal from './DetailModal'
 import PageTitle from '../Util/PageTitle'
 import SearchBar from '../Util/SearchBar'
 import StateBadge from '../Util/StateBadge'
+import DefectRankBadge from '../Util/DefectRankBadge'
+import CategorySelect from '../Util/CategorySelect'
 import { fetchTools, resolveImageUrl } from '../../api'
+import { matchesKeyword } from '../../utils/search'
+import { getCategories, getPurchaseAge } from '../../utils/toolInfo'
 import { useFetch } from '../../hooks/useFetch'
 import { Empty, ErrorMessage, Loading } from '../Util/AsyncState'
 import { DEFAULT_SORT, SORT_OPTIONS, getSortOption, sortTools } from '../../utils/toolSort'
@@ -38,8 +42,8 @@ const SortControl = ({ sort, onChange }) => {
     const current = sort.desc ? descLabel : ascLabel
 
     return (
-        <div className="mb-6">
-            <label htmlFor="tool-sort" className="mb-2 block text-base font-bold text-sub">
+        <div className="min-w-0">
+            <label htmlFor="tool-sort" className="block text-base font-bold text-sub">
                 並び替え
             </label>
             <div className="flex items-center gap-3">
@@ -74,19 +78,37 @@ const SortControl = ({ sort, onChange }) => {
 // カード全体がボタンなので、手袋でも狙いやすい。
 // 貸出状況は枠線の色（貸出中=赤 / 貸出可能=緑）で離れていても分かるようにし、
 // 色だけに頼らないよう「貸出中 / 貸出可能」の文字も必ず併記する。
+const Label = ({ children }) => <span className="mr-2 text-base font-medium text-sub">{children}</span>
+
 const ToolCard = ({ tool, onSelect }) => {
-    const { name, id, startDate, endDate, user, place, photoUrl, state, isRented } = tool
+    const {
+        name,
+        id,
+        category,
+        startDate,
+        endDate,
+        takenAt,
+        user,
+        place,
+        photoUrl,
+        state,
+        defectRank,
+        purchaseDate,
+        isRented,
+        reservations = [],
+    } = tool
+    const age = getPurchaseAge(purchaseDate)
 
     return (
         <li>
             <button
                 type="button"
                 onClick={onSelect}
-                className={`flex w-full flex-wrap items-center gap-5 rounded-2xl border-4 bg-surface px-5 py-4 text-left ${
+                className={`flex w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border-4 bg-surface px-4 py-3 text-left ${
                     isRented ? 'border-accent' : 'border-available'
                 }`}
             >
-                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border-2 border-line bg-field">
+                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 border-line bg-field">
                     {photoUrl && (
                         <img
                             src={resolveImageUrl(photoUrl)}
@@ -101,15 +123,26 @@ const ToolCard = ({ tool, onSelect }) => {
                     <div className="flex flex-wrap items-center gap-3">
                         <span className="text-2xl font-extrabold">{name}</span>
                         <StateBadge state={state} />
+                        <DefectRankBadge rank={defectRank} />
                     </div>
                     <div className="flex flex-wrap gap-x-8 text-lg font-bold">
                         <span>
-                            <span className="mr-2 text-base font-medium text-sub">ID</span>
+                            <Label>ID</Label>
                             {id}
                         </span>
+                        {category && (
+                            <span>
+                                <Label>大項目</Label>
+                                {category}
+                            </span>
+                        )}
                         <span>
-                            <span className="mr-2 text-base font-medium text-sub">置き場所</span>
+                            <Label>持ち出し場所</Label>
                             {place ?? '未設定'}
+                        </span>
+                        <span>
+                            <Label>購入</Label>
+                            {age ? `${age.label}前` : '未登録'}
                         </span>
                     </div>
                 </div>
@@ -118,17 +151,32 @@ const ToolCard = ({ tool, onSelect }) => {
                     {isRented ? (
                         <>
                             <p className="text-lg font-extrabold text-accent">貸出中</p>
-                            <div className="text-lg font-bold">
-                                <span className="mr-2 text-base font-medium text-sub">使用者</span>
-                                {user}
-                            </div>
-                            <div className="text-lg font-bold">
-                                <span className="mr-2 text-base font-medium text-sub">期間</span>
-                                {startDate} 〜 {endDate}
+                            <div className="flex flex-wrap gap-x-6 text-lg font-bold">
+                                <span>
+                                    <Label>使用者</Label>
+                                    {user}
+                                </span>
+                                <span>
+                                    <Label>持出</Label>
+                                    {takenAt || startDate}
+                                </span>
+                                <span>
+                                    <Label>返却予定</Label>
+                                    {endDate}
+                                </span>
                             </div>
                         </>
                     ) : (
                         <p className="text-lg font-extrabold text-available">貸出可能</p>
+                    )}
+                    {reservations.length > 0 && (
+                        <p className="text-base font-bold">
+                            <Label>次の予約</Label>
+                            {reservations[0].label}
+                            {reservations.length > 1 && (
+                                <span className="ml-2 text-sub">ほか {reservations.length - 1} 件</span>
+                            )}
+                        </p>
                     )}
                 </div>
             </button>
@@ -138,6 +186,7 @@ const ToolCard = ({ tool, onSelect }) => {
 
 const ToolList = () => {
     const [keyword, setKeyword] = useState('')
+    const [category, setCategory] = useState('')
     const [selectedId, setSelectedId] = useState(null)
     const [sort, setSort] = useState(loadSort)
     const load = useCallback(() => fetchTools(), [])
@@ -148,31 +197,36 @@ const ToolList = () => {
         saveSort(next)
     }
 
-    // 検索はサーバー側にもあるが、入力のたびに叩かず取得済みの一覧から絞る
+    // 検索はサーバー側にもあるが、入力のたびに叩かず取得済みの一覧から絞る。
+    // 全角/半角・ひらがな/カタカナの違いは区別しない。
+    const all = tools ?? []
+    const categories = getCategories(all)
+    const counts = Object.fromEntries(categories.map((c) => [c, all.filter((t) => t.category === c).length]))
     const filtered = sortTools(
-        keyword
-            ? (tools ?? []).filter((t) =>
-                  [t.name, t.id, t.user, t.place, t.category].some((v) => (v ?? '').includes(keyword))
-              )
-            : (tools ?? []),
+        all.filter(
+            (t) =>
+                (!category || t.category === category) &&
+                matchesKeyword(keyword, [t.name, t.id, t.user, t.place, t.category])
+        ),
         sort
     )
+    const isFiltered = Boolean(keyword || category)
 
     return (
         <div className="flex w-full items-start justify-center bg-surface pb-nav">
-            <div className="w-full max-w-5xl px-6 pt-8">
+            <div className="w-full max-w-5xl px-6 pt-6">
                 <PageTitle
                     en="TOOLS"
-                    description="工具をタップすると、状態・点検日・使用履歴を確認できます。"
+                    description=""
                 >
                     工具リスト
                 </PageTitle>
 
-                <p className="mb-6 text-xl font-extrabold">
+                <p className="mb-4 text-xl font-extrabold">
                     {filtered.length} 件
-                    {keyword && (
+                    {isFiltered && (
                         <span className="ml-2 text-base font-bold text-sub">
-                            （全 {(tools ?? []).length} 件中）
+                            （全 {all.length} 件中）
                         </span>
                     )}
                 </p>
@@ -181,10 +235,18 @@ const ToolList = () => {
                     keyword={keyword}
                     onChange={setKeyword}
                     label="工具を検索"
-                    placeholder="工具名 / ID / 使用者 で検索"
+                    placeholder="工具名 / ID / 使用者 / 場所 で検索"
                 />
 
-                <SortControl sort={sort} onChange={changeSort} />
+                <div className="mb-4 grid gap-4 md:grid-cols-2">
+                    <CategorySelect
+                        categories={categories}
+                        value={category}
+                        onChange={setCategory}
+                        counts={counts}
+                    />
+                    <SortControl sort={sort} onChange={changeSort} />
+                </div>
 
                 {loading ? (
                     <Loading />
@@ -193,7 +255,7 @@ const ToolList = () => {
                 ) : filtered.length === 0 ? (
                     <Empty>該当する工具がありません</Empty>
                 ) : (
-                    <ul className="mb-4 flex flex-col gap-5">
+                    <ul className="mb-4 flex flex-col gap-3">
                         {filtered.map((tool) => (
                             <ToolCard
                                 key={tool.id}
@@ -209,10 +271,8 @@ const ToolList = () => {
                 isOpen={selectedId !== null}
                 setIsOpen={(open) => !open && setSelectedId(null)}
                 toolId={selectedId}
-                onUpdated={() => {
-                    setSelectedId(null)
-                    reload()
-                }}
+                categories={categories}
+                onUpdated={reload}
             />
         </div>
     )

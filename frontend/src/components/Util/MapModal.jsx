@@ -43,7 +43,7 @@ const MapModal = ({ isOpen, setIsOpen, src = publicUrl('/img/map.png'), pin, set
                         <Dialog.Panel className="relative mx-auto max-h-full overflow-y-auto rounded-2xl border-4 border-main bg-surface p-4">
                             <div className="mb-3 flex items-center justify-between gap-6">
                                 <Dialog.Title className="text-2xl font-extrabold">
-                                    置き場所を選ぶ
+                                    持ち出し場所を選ぶ
                                 </Dialog.Title>
                                 {/* 選択中の区画を文字で示す（ピンの位置だけに頼らない） */}
                                 <p className="text-xl font-extrabold">
@@ -59,7 +59,7 @@ const MapModal = ({ isOpen, setIsOpen, src = publicUrl('/img/map.png'), pin, set
                             >
                                 <img
                                     src={src}
-                                    alt="工場のマップ。タップして置き場所を選びます。"
+                                    alt="工場のマップ。タップして持ち出し場所を選びます。"
                                     draggable={false}
                                     className="block max-h-[60vh] max-w-[85vw] select-none object-contain"
                                 />
@@ -81,10 +81,6 @@ const MapModal = ({ isOpen, setIsOpen, src = publicUrl('/img/map.png'), pin, set
                                     </div>
                                 )}
                             </div>
-
-                            <p className="pt-3 text-center text-lg font-bold text-sub">
-                                マップをタップして置き場所を選んでください
-                            </p>
 
                             <button
                                 type="button"

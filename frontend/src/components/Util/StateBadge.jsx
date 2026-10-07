@@ -3,11 +3,10 @@ import { getToolState } from '../../utils/toolState'
 
 // 工具の状態表示。
 // 色覚特性によらず判別できるよう、色・アイコン・文字の3つで冗長に伝える。
-// 赤と緑の対比は避け、良好=青 / 不良=橙 / 破損=赤 とする。
+// 赤と緑の対比は避け、良好=青 / 不良=橙 とする（不良の程度は DefectRankBadge で示す）。
 const STATES = {
     good: { color: 'var(--color-state-good)', icon: '●' },
     bad: { color: 'var(--color-state-bad)', icon: '▲' },
-    damaged: { color: 'var(--color-state-damaged)', icon: '✕' },
 }
 
 const getStateStyle = (state) => STATES[state] ?? STATES.good

@@ -2,6 +2,7 @@ import { Dialog, Transition } from '@headlessui/react'
 import React, { Fragment, useEffect, useState } from 'react'
 import MapPicker from '../Util/MapPicker'
 import Button from '../Util/Button'
+import ChoiceInput from '../Util/ChoiceInput'
 import { createEmployee, updateEmployee } from '../../api'
 
 // 入力欄。ラベルは常時表示（プレースホルダだけに頼らない）、必須は文字でも示す。
@@ -30,7 +31,7 @@ const EMPTY = {
 }
 
 // 社員の追加 / 編集モーダル。employee が null なら新規追加。
-const EmployeeModal = ({ isOpen, setIsOpen, employee, onSaved }) => {
+const EmployeeModal = ({ isOpen, setIsOpen, employee, onSaved, teams = [] }) => {
     const isNew = !employee
     const [form, setForm] = useState(EMPTY)
     const [saving, setSaving] = useState(false)
@@ -147,13 +148,17 @@ const EmployeeModal = ({ isOpen, setIsOpen, employee, onSaved }) => {
                                         />
                                     </Field>
 
-                                    <Field id="emp-team" label="所属班">
-                                        <input
+                                    <Field
+                                        id="emp-team"
+                                        label="所属班"
+                                        hint="同じ班のメンバーどうしは代理で貸し借りできます。一覧に無い班は「新しく入力する」を選んでください。"
+                                    >
+                                        <ChoiceInput
                                             id="emp-team"
-                                            type="text"
                                             value={form.team}
-                                            onChange={set('team')}
+                                            options={teams}
                                             maxLength={64}
+                                            onChange={(team) => setForm((f) => ({ ...f, team }))}
                                             className={inputClass}
                                         />
                                     </Field>
@@ -200,14 +205,14 @@ const EmployeeModal = ({ isOpen, setIsOpen, employee, onSaved }) => {
                                 </div>
 
                                 <div>
-                                    <p className="pb-2 text-lg font-bold">工具を借りるときの置き場所</p>
+                                    <p className="pb-2 text-lg font-bold">工具を借りるときの持ち出し場所</p>
                                     <p className="pb-3 text-base text-sub">
                                         この社員が工具を借りるときの初期値になります。
                                     </p>
                                     <MapPicker
                                         pin={form.defaultPin}
                                         setPin={(pin) => setForm((f) => ({ ...f, defaultPin: pin }))}
-                                        label="既定の置き場所"
+                                        label="既定の持ち出し場所"
                                     />
                                     {form.defaultPin && (
                                         <Button
@@ -216,7 +221,7 @@ const EmployeeModal = ({ isOpen, setIsOpen, employee, onSaved }) => {
                                             className="mt-4"
                                             onClick={() => setForm((f) => ({ ...f, defaultPin: null }))}
                                         >
-                                            置き場所を未設定に戻す
+                                            持ち出し場所を未設定に戻す
                                         </Button>
                                     )}
                                 </div>
