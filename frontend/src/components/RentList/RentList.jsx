@@ -121,7 +121,7 @@ const RentCard = ({ item, showUser, disabled, onReturn, onRenew, onStart, onCanc
                                 返す
                             </Button>
                             <Button variant="secondary" onClick={onRenew} disabled={disabled}>
-                                期間を更新
+                                更新
                             </Button>
                         </>
                     )}
