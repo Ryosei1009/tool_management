@@ -248,7 +248,7 @@ const InspectTab = ({ tool, check, setCheck, isAdmin, assign, setAssign, allItem
                     </p>
                 ) : (
                     <>
-                        <Button
+                        {/* <Button
                             variant="secondary"
                             size="md"
                             onClick={() =>
@@ -259,7 +259,7 @@ const InspectTab = ({ tool, check, setCheck, isAdmin, assign, setAssign, allItem
                             }
                         >
                             すべて OK にする
-                        </Button>
+                        </Button> */}
                         <ul className="flex flex-col gap-4">
                             {items.map((item) => (
                                 <li key={item.id} className="rounded-xl border-2 border-ink p-3">
