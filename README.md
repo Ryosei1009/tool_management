@@ -95,4 +95,4 @@ cd frontend && npm install && npm run dev
 ## 初期データ
 
 `frontend/src/data/*.json` が backend のシードデータです（画面はこれを直接読まず、API 経由で取得します）。
-内容を変えたいときはこの JSON を編集して `cd backend && npm run seed` を実行してください
+内容を変えたいときはこの JSON を編集して `cd backend && npm run seed` を実行してください。
