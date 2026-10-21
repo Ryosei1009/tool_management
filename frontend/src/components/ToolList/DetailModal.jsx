@@ -240,7 +240,7 @@ const InspectTab = ({ tool, check, setCheck, isAdmin, assign, setAssign, allItem
     return (
         <div className="grid gap-6 md:grid-cols-2">
             <div className="flex flex-col gap-5">
-                <SectionTitle>点検する</SectionTitle>
+                {/* <SectionTitle>点検する</SectionTitle> */}
                 {items.length === 0 ? (
                     <p className="rounded-xl border-2 border-line bg-field p-4 text-lg font-bold text-sub">
                         この工具には点検項目が設定されていません。
