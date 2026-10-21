@@ -55,8 +55,18 @@ const BACKFILLS = [
 ];
 
 const main = async () => {
-    const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
     const database = process.env.TM_MYSQL_DATABASE || process.env.MYSQL_DATABASE;
+    if (!database || !process.env.MYSQL_HOST) {
+        throw new Error(
+            '接続先が設定されていません。MYSQL_HOST と MYSQL_DATABASE（または TM_MYSQL_DATABASE）を .env に設定し、' +
+                'その .env があるディレクトリで実行してください。'
+        );
+    }
+    // schema.sql の CREATE DATABASE / USE は tool_management 固定なので、設定された DB 名に置き換える
+    // （既存 API に組み込んで TM_MYSQL_DATABASE を別名にしている環境で、別の DB にテーブルを作らないため）
+    const sql = fs
+        .readFileSync(path.join(__dirname, 'schema.sql'), 'utf8')
+        .replace(/^(CREATE DATABASE IF NOT EXISTS|USE)\s+tool_management\b/gm, `$1 \`${database}\``);
 
     // schema.sql 側に CREATE DATABASE / USE があるので database は指定せずに接続する
     const conn = await mysql.createConnection({
@@ -69,7 +79,7 @@ const main = async () => {
 
     try {
         await conn.query(sql);
-        console.log(`スキーマを作成しました（database: ${database}）。`);
+        console.log(`スキーマを作成しました（database: ${database} / host: ${process.env.MYSQL_HOST}）。`);
 
         for (const { table, column, definition } of ADDED_COLUMNS) {
             const [rows] = await conn.query(

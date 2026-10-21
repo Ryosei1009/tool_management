@@ -48,8 +48,9 @@ export const fetchRentals = () => api.get('/rentals/get')
 export const createRental = (rental) => api.post('/rentals/create', rental)
 
 // 予約していた工具を持ち出す
-export const startRental = ({ rentalId, endDate, endPeriod, pin }) =>
-    api.post('/rentals/start', { rentalId, endDate, endPeriod, pin })
+// ロープは loadChecked: true（荷重に問題がないことを確認した）が必要
+export const startRental = ({ rentalId, endDate, endPeriod, pin, loadChecked }) =>
+    api.post('/rentals/start', { rentalId, endDate, endPeriod, pin, loadChecked })
 
 export const cancelReservation = (rentalId) => api.post('/rentals/cancel', { rentalId })
 

@@ -7,7 +7,7 @@ import DefectRankBadge from '../Util/DefectRankBadge'
 import CategorySelect from '../Util/CategorySelect'
 import { fetchTools, resolveImageUrl } from '../../api'
 import { matchesKeyword } from '../../utils/search'
-import { getCategories, getPurchaseAge } from '../../utils/toolInfo'
+import { getCategories, getInspectionStatus, getPurchaseAge, isRope, ROPE_INSPECTION_MONTHS } from '../../utils/toolInfo'
 import { useFetch } from '../../hooks/useFetch'
 import { Empty, ErrorMessage, Loading } from '../Util/AsyncState'
 import { DEFAULT_SORT, SORT_OPTIONS, getSortOption, sortTools } from '../../utils/toolSort'
@@ -80,7 +80,26 @@ const SortControl = ({ sort, onChange }) => {
 // 色だけに頼らないよう「貸出中 / 貸出可能」の文字も必ず併記する。
 const Label = ({ children }) => <span className="mr-2 text-base font-medium text-sub">{children}</span>
 
-const ToolCard = ({ tool, onSelect }) => {
+// ロープの点検が期限内かどうか。安全に関わるので、色に加えてアイコンと文字で大きく示す。
+const InspectionStatus = ({ status }) => (
+    <p
+        className={`flex flex-wrap items-center gap-x-4 rounded-xl px-3 py-1 text-lg font-extrabold ${
+            status.ok ? 'border-2 border-state-good text-state-good' : 'bg-accent text-surface'
+        }`}
+    >
+        <span>
+            <span aria-hidden="true" className="mr-1">
+                {status.ok ? '●' : '✕'}
+            </span>
+            {status.label}
+        </span>
+        <span className={`text-base font-bold ${status.ok ? 'text-sub' : ''}`}>{status.detail}</span>
+    </p>
+)
+
+// showInspection … ロープで絞り込んでいるとき、点検が3か月以内かを出す
+// showLastInspection … 最終点検日で並び替えているとき、最終点検日を出す
+const ToolCard = ({ tool, onSelect, showInspection, showLastInspection }) => {
     const {
         name,
         id,
@@ -94,10 +113,12 @@ const ToolCard = ({ tool, onSelect }) => {
         state,
         defectRank,
         purchaseDate,
+        lastInspectionDate,
         isRented,
         reservations = [],
     } = tool
     const age = getPurchaseAge(purchaseDate)
+    const inspection = showInspection ? getInspectionStatus(lastInspectionDate) : null
 
     return (
         <li>
@@ -144,6 +165,13 @@ const ToolCard = ({ tool, onSelect }) => {
                             <Label>購入</Label>
                             {age ? `${age.label}前` : '未登録'}
                         </span>
+                        {/* 点検の状況を出しているときは、そこに最終点検日も入っているので重ねて出さない */}
+                        {showLastInspection && !inspection && (
+                            <span>
+                                <Label>最終点検日</Label>
+                                {lastInspectionDate ? lastInspectionDate.replace(/-/g, '/') : '未点検'}
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -179,6 +207,13 @@ const ToolCard = ({ tool, onSelect }) => {
                         </p>
                     )}
                 </div>
+
+                {/* 安全に関わるので、カードの幅いっぱいに出して見落とさないようにする */}
+                {inspection && (
+                    <div className="w-full">
+                        <InspectionStatus status={inspection} />
+                    </div>
+                )}
             </button>
         </li>
     )
@@ -211,6 +246,9 @@ const ToolList = () => {
         sort
     )
     const isFiltered = Boolean(keyword || category)
+    // ロープで絞り込んでいるときだけ、点検が3か月以内かを確認できるようにする
+    const ropeMode = Boolean(category) && isRope(category)
+    const expiredCount = ropeMode ? filtered.filter((t) => !getInspectionStatus(t.lastInspectionDate).ok).length : 0
 
     return (
         <div className="flex w-full items-start justify-center bg-surface pb-nav">
@@ -248,6 +286,22 @@ const ToolList = () => {
                     <SortControl sort={sort} onChange={changeSort} />
                 </div>
 
+                {ropeMode && !loading && !error && filtered.length > 0 && (
+                    <p
+                        role="status"
+                        className={`mb-4 rounded-xl px-4 py-2 text-lg font-extrabold ${
+                            expiredCount > 0 ? 'bg-accent text-surface' : 'border-2 border-state-good text-state-good'
+                        }`}
+                    >
+                        <span aria-hidden="true" className="mr-2">
+                            {expiredCount > 0 ? '✕' : '●'}
+                        </span>
+                        {expiredCount > 0
+                            ? `点検が${ROPE_INSPECTION_MONTHS}か月を過ぎているロープが ${expiredCount} 件あります。使用せずに点検してください。`
+                            : `すべてのロープが点検から${ROPE_INSPECTION_MONTHS}か月以内です。`}
+                    </p>
+                )}
+
                 {loading ? (
                     <Loading />
                 ) : error ? (
@@ -260,6 +314,8 @@ const ToolList = () => {
                             <ToolCard
                                 key={tool.id}
                                 tool={tool}
+                                showInspection={ropeMode}
+                                showLastInspection={sort.by === 'lastInspectionDate'}
                                 onSelect={() => setSelectedId(tool.id)}
                             />
                         ))}

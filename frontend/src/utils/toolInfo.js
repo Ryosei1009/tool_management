@@ -1,3 +1,5 @@
+import { normalize } from './search'
+
 // 不良ランク。値は backend の tools.defect_rank（ENUM）と一致させる。
 // 買い替えの判断に使うので、重いほど目立つ表示にする（DefectRankBadge）。
 export const DEFECT_RANKS = [
@@ -41,3 +43,38 @@ export const formatPurchase = (purchaseDate) => {
 // 大項目（カテゴリ）の一覧。選択肢は取得済みの工具から作る。
 export const getCategories = (tools) =>
     [...new Set((tools ?? []).map((t) => t.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ja'))
+
+// 大項目がロープ（ロープ・ワイヤーロープなど）か。backend の utils/search.js と同じ判定。
+// 全角/半角・ひらがな/カタカナの違いは区別しない。
+export const isRope = (category) => normalize(category).includes('ろーぷ')
+
+// ロープの点検の有効期間（最終点検日からの月数）
+export const ROPE_INSPECTION_MONTHS = 3
+
+const formatYmd = (d) =>
+    `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
+
+// 最終点検日から months か月以内か。
+// { ok, label, detail }。点検日が無いものは期限切れと同じ扱い（ok: false）にする。
+export const getInspectionStatus = (lastInspectionDate, months = ROPE_INSPECTION_MONTHS, now = new Date()) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(lastInspectionDate ?? '')
+    if (!m) return { ok: false, label: '点検記録なし', detail: '点検してから使用してください' }
+
+    const last = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+    const due = new Date(last.getFullYear(), last.getMonth() + months, last.getDate())
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const days = Math.round((due - today) / 86400000)
+
+    if (days < 0) {
+        return {
+            ok: false,
+            label: `点検期限切れ（${-days} 日超過）`,
+            detail: `最終点検 ${formatYmd(last)}・期限 ${formatYmd(due)}`,
+        }
+    }
+    return {
+        ok: true,
+        label: `点検 ${months}か月以内`,
+        detail: `最終点検 ${formatYmd(last)}・期限まで あと ${days} 日`,
+    }
+}

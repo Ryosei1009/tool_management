@@ -10,6 +10,7 @@ import SlotInput from '../Util/SlotInput'
 import ConflictAlert from '../Util/ConflictAlert'
 import InfoRow from '../Util/InfoRow'
 import { defaultRentPeriod, notFoundTool, toRentTool } from '../../utils/tools'
+import { isRope } from '../../utils/toolInfo'
 import { currentSlot, findConflicts, slotKey, toolOccupancy } from '../../utils/period'
 import { createRental, fetchEmployees, fetchTool, resolveImageUrl } from '../../api'
 import { useAuth } from '../../auth/AuthContext'
@@ -26,6 +27,8 @@ const RentModal = ({ isOpen, setIsOpen, toolId, onRented }) => {
     const [tool, setTool] = useState(() => notFoundTool(toolId))
     const [mode, setMode] = useState('rent')
     const [borrowerId, setBorrowerId] = useState(user?.id)
+    // ロープを借りるときの「荷重に問題がないことを確認した」
+    const [loadChecked, setLoadChecked] = useState(false)
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
@@ -44,6 +47,7 @@ const RentModal = ({ isOpen, setIsOpen, toolId, onRented }) => {
         setLoading(true)
         setError('')
         setBorrowerId(user?.id)
+        setLoadChecked(false)
         fetchTool(toolId)
             .then((data) => {
                 if (ignore) return
@@ -90,6 +94,8 @@ const RentModal = ({ isOpen, setIsOpen, toolId, onRented }) => {
             : null
     const conflicts = findConflicts(range, occupancy, ownReservation?.rentalId)
     const pastReserve = mode === 'reserve' && range.start < slotKey(now.date, now.period)
+    // 荷重の確認は、ロープを今すぐ借りる（持ち出す）ときだけ求める
+    const needsLoadCheck = mode === 'rent' && !tool.notFound && isRope(tool.category)
 
     const submit = () => {
         setIsConfirmOpen(false)
@@ -105,6 +111,7 @@ const RentModal = ({ isOpen, setIsOpen, toolId, onRented }) => {
             endDate: period.end,
             endPeriod: period.endPeriod,
             pin: mode === 'rent' ? tool.pin : undefined,
+            loadChecked: needsLoadCheck ? loadChecked : undefined,
         })
             .then(() => {
                 setIsOpen(false)
@@ -121,7 +128,8 @@ const RentModal = ({ isOpen, setIsOpen, toolId, onRented }) => {
         (mode === 'rent' && tool.isRented) ||
         invalidRange ||
         pastReserve ||
-        conflicts.length > 0
+        conflicts.length > 0 ||
+        (needsLoadCheck && !loadChecked)
 
     const buttonLabel = tool.notFound
         ? '該当する工具がありません'
@@ -133,6 +141,8 @@ const RentModal = ({ isOpen, setIsOpen, toolId, onRented }) => {
                     ? '返却予定を開始より後にしてください'
                     : pastReserve
                         ? '過去の日時は予約できません'
+                        : needsLoadCheck && !loadChecked
+                        ? '荷重の確認にチェックしてください'
                         : mode === 'rent'
                             ? 'この内容で借りる'
                             : 'この内容で予約する'
@@ -274,6 +284,25 @@ const RentModal = ({ isOpen, setIsOpen, toolId, onRented }) => {
                                 onChange={({ date, period: p }) => setPeriod({ end: date, endPeriod: p })}
                             />
                         </fieldset>
+
+                        {needsLoadCheck && (
+                            <fieldset className="rounded-xl border-4 border-state-bad p-4">
+                                <legend className="px-1 text-lg font-extrabold text-state-bad">
+                                    <span aria-hidden="true">▲ </span>ロープの荷重の確認
+                                </legend>
+                                <p className="pb-3 text-base font-bold">
+                                    吊る・引く荷の重さが、このロープの使用荷重（定格荷重）以内であることを確認してください。
+                                </p>
+                                <label className="flex min-h-touch items-center gap-4">
+                                    <input
+                                        type="checkbox"
+                                        checked={loadChecked}
+                                        onChange={(e) => setLoadChecked(e.target.checked)}
+                                    />
+                                    <span className="text-xl font-extrabold">荷重に問題がないことを確認しました</span>
+                                </label>
+                            </fieldset>
+                        )}
 
                         <ConflictAlert conflicts={conflicts} />
                         {ownReservation && conflicts.length === 0 && (

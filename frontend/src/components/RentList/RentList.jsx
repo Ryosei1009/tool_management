@@ -13,6 +13,7 @@ import { useFetch } from '../../hooks/useFetch'
 import { useAuth } from '../../auth/AuthContext'
 import { matchesKeyword } from '../../utils/search'
 import { currentSlot, getDueInfo, slotKey } from '../../utils/period'
+import { isRope } from '../../utils/toolInfo'
 import { Empty, ErrorMessage, Loading } from '../Util/AsyncState'
 
 const Label = ({ children }) => <span className="mr-2 text-base font-medium text-sub">{children}</span>
@@ -290,13 +291,18 @@ const RentList = () => {
             <ConfirmModal
                 isOpen={modal === 'start'}
                 setIsOpen={closeModal}
-                text={`${selected?.name ?? ''} を持ち出しますか？`}
-                yesText="持ち出す"
+                // ロープは荷重の確認を兼ねる（押すことで「確認した」とする）
+                text={
+                    isRope(selected?.category)
+                        ? `${selected?.name ?? ''}：吊る荷の重さが使用荷重以内であることを確認しましたか？`
+                        : `${selected?.name ?? ''} を持ち出しますか？`
+                }
+                yesText={isRope(selected?.category) ? '確認して持ち出す' : '持ち出す'}
                 noText="やめる"
                 setBoolean={(yes) =>
                     yes &&
                     runConfirmed(
-                        (t) => startRental({ rentalId: t.rentalId }),
+                        (t) => startRental({ rentalId: t.rentalId, loadChecked: isRope(t.category) || undefined }),
                         (t) => `${t.name} を持ち出しました。`
                     )
                 }

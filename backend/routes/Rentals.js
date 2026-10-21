@@ -6,6 +6,14 @@ const { toToolResponse, toRangeLabel } = require('../utils/format');
 const { canActFor } = require('../utils/permission');
 const { withToolChangeLog } = require('../utils/changeLog');
 const { currentSlot, isPeriod, nowJst, overlaps, rentalRange, slotKey } = require('../utils/time');
+const { isRope } = require('../utils/search');
+
+// ロープは持ち出すときに、吊る荷の重さが使用荷重以内か確認したこと（loadChecked）を必須にする
+const assertLoadChecked = (category, loadChecked) => {
+    if (isRope(category) && loadChecked !== true) {
+        throw new HttpError(400, 'ロープは荷重に問題がないことを確認してから借りてください。');
+    }
+};
 
 const STATES = ['good', 'bad'];
 const DEFECT_RANKS = ['minor', 'repair', 'replace', 'waiting'];
@@ -174,7 +182,7 @@ router.post(
     '/create',
     authenticate,
     transaction('貸出処理に失敗しました。', async (conn, req) => {
-        const { toolId, mode = 'rent', endDate, endPeriod, pin, employeeId } = req.body;
+        const { toolId, mode = 'rent', endDate, endPeriod, pin, employeeId, loadChecked } = req.body;
         if (!toolId) throw new HttpError(400, '工具IDは必須です。');
         if (mode !== 'rent' && mode !== 'reserve') throw new HttpError(400, '借り方の指定が正しくありません。');
 
@@ -185,8 +193,10 @@ router.post(
         const [borrowers] = await conn.query('SELECT id FROM employees WHERE id = ?', [borrowerId]);
         if (borrowers.length === 0) throw new HttpError(404, '借りる人が見つかりません。');
 
-        const [tools] = await conn.query('SELECT id FROM tools WHERE id = ? FOR UPDATE', [toolId]);
+        const [tools] = await conn.query('SELECT id, category FROM tools WHERE id = ? FOR UPDATE', [toolId]);
         if (tools.length === 0) throw new HttpError(404, '該当する工具がありません。');
+        // 予約の時点ではまだ持ち出さないので、荷重の確認は今すぐ借りるときだけ
+        if (mode === 'rent') assertLoadChecked(tools[0].category, loadChecked);
 
         const now = currentSlot();
         const nowKey = slotKey(now.date, now.period);
@@ -252,9 +262,11 @@ router.post(
     '/start',
     authenticate,
     transaction('貸出処理に失敗しました。', async (conn, req) => {
-        const { rentalId, endDate, endPeriod, pin } = req.body;
+        const { rentalId, endDate, endPeriod, pin, loadChecked } = req.body;
         if (!rentalId) throw new HttpError(400, '予約IDは必須です。');
         const rental = await lockRental(conn, rentalId, req.user, ['reserved']);
+        const [[tool]] = await conn.query('SELECT category FROM tools WHERE id = ?', [rental.tool_id]);
+        assertLoadChecked(tool?.category, loadChecked);
 
         const now = currentSlot();
         const end = endDate ?? String(rental.end_date).slice(0, 10);

@@ -21,4 +21,7 @@ const matchesKeyword = (keyword, values) => {
     return words.every((w) => targets.some((t) => t.includes(w)));
 };
 
-module.exports = { normalize, matchesKeyword };
+// 大項目がロープ（ロープ・ワイヤーロープなど）か。フロントの utils/toolInfo.js と同じ判定。
+const isRope = (category) => normalize(category).includes('ろーぷ');
+
+module.exports = { normalize, matchesKeyword, isRope };
