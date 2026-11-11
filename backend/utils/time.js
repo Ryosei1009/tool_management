@@ -26,6 +26,15 @@ const nowJst = () => {
     return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
 };
 
+// 日本時間の今日 'YYYY-MM-DD'
+const todayJst = () => nowJst().slice(0, 10);
+
+// 'YYYY-MM-DD HH:MM:SS'（日本時間）に分を足す
+const addMinutesJst = (jst, minutes) => {
+    const date = new Date(`${String(jst).replace(' ', 'T')}+09:00`);
+    return new Date(date.getTime() + minutes * 60000 + 9 * 3600000).toISOString().slice(0, 19).replace('T', ' ');
+};
+
 // 現在の半日枠 { date, period }（12時より前は午前）
 const currentSlot = () => {
     const now = nowJst();
@@ -77,6 +86,8 @@ module.exports = {
     PERIODS,
     isPeriod,
     nowJst,
+    todayJst,
+    addMinutesJst,
     currentSlot,
     slotKey,
     overlaps,

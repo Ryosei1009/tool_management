@@ -8,6 +8,7 @@ const { toToolResponse, toIsoDate, toRangeLabel } = require('../utils/format');
 const { matchesKeyword } = require('../utils/search');
 const { nowJst, toFullDateTime, PERIODS } = require('../utils/time');
 const { withToolChangeLog } = require('../utils/changeLog');
+const { isAdmin } = require('../utils/roles');
 
 // 工具写真のアップロード先（router.js で /images として静的配信）。
 // 既存 API に組み込むと cwd が変わるので __dirname 基準にする。
@@ -18,11 +19,24 @@ const storage = multer.diskStorage({
         cb(null, `${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`);
     },
 });
+// 配信したときにブラウザがスクリプトとして実行しうる形式（SVG・HTML など）は受け付けない
+const IMAGE_TYPES = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.webp': 'image/webp',
+    '.gif': 'image/gif',
+};
 const upload = multer({
     storage,
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
     fileFilter: (req, file, cb) => {
-        if (!/^image\//.test(file.mimetype)) return cb(new Error('画像ファイルのみアップロードできます。'));
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (!IMAGE_TYPES[ext] || IMAGE_TYPES[ext] !== file.mimetype) {
+            const err = new Error('画像は JPEG・PNG・WebP・GIF のいずれかにしてください。');
+            err.status = 400;
+            return cb(err);
+        }
         cb(null, true);
     },
 });
@@ -73,9 +87,13 @@ const fetchReservations = async (toolId) => {
 // 工具一覧（工具リスト画面 / 借りる画面の検索）
 // ?keyword= で名前・ID・使用者・持ち出し場所・大項目を絞り込む（全角/半角は区別しない）
 // ?category= で大項目を絞り込む
-router.get('/get', async (req, res) => {
+// 無効化した工具は出さない。管理者が ?includeInactive=1 を付けたときだけ含める。
+router.get('/get', authenticate, async (req, res) => {
+    const includeInactive = isAdmin(req.user) && req.query.includeInactive === '1';
     try {
-        const [rows] = await db.query(`${TOOL_SELECT} ORDER BY t.id`);
+        const [rows] = await db.query(
+            `${TOOL_SELECT} ${includeInactive ? '' : 'WHERE t.active = 1'} ORDER BY t.active DESC, t.id`
+        );
         const reservations = await fetchReservations();
 
         let tools = rows.map((row) => {
@@ -99,7 +117,7 @@ router.get('/get', async (req, res) => {
 
 // 工具詳細（QR読み取り / 詳細モーダル）。
 // 使用履歴・予約・点検項目・点検記録・更新履歴もまとめて返す。
-router.get('/get/:id', async (req, res) => {
+router.get('/get/:id', authenticate, async (req, res) => {
     const toolId = req.params.id;
     try {
         const [rows] = await db.query(`${TOOL_SELECT} WHERE t.id = ?`, [toolId]);
@@ -209,6 +227,19 @@ const validateDefect = ({ state, defectRank }) => {
     return null;
 };
 
+// 点検の周期（月）。空・null は「期限なし」。1〜120 の整数のみ。
+const parseInterval = (value) => {
+    if (value === undefined || value === null || value === '') return { value: null };
+    const months = Number(value);
+    if (!Number.isInteger(months) || months < 1 || months > 120) {
+        return { error: '点検の周期は 1〜120 か月の整数で入力してください。' };
+    }
+    return { value: months };
+};
+
+// QR コードと URL に入るので、記号や空白は使わせない
+const ID_PATTERN = /^[A-Za-z0-9_-]{1,32}$/;
+
 // 点検項目の割り当てを入れ替える
 const setInspectionItems = async (conn, toolId, itemIds) => {
     await conn.query('DELETE FROM tool_inspection_items WHERE tool_id = ?', [toolId]);
@@ -232,11 +263,17 @@ router.post('/create', authenticate, requireAdmin, async (req, res) => {
         pin,
         purchaseDate,
         lastInspectionDate,
+        inspectionIntervalMonths,
         inspectionItemIds,
     } = req.body;
     if (!id || !name) return res.status(400).send('IDと名前は必須です。');
+    if (!ID_PATTERN.test(String(id))) {
+        return res.status(400).send('工具IDは半角の英数字・ハイフン・アンダーバー（32文字まで）で入力してください。');
+    }
     const invalid = validateDefect({ state, defectRank });
     if (invalid) return res.status(400).send(invalid);
+    const interval = parseInterval(inspectionIntervalMonths);
+    if (interval.error) return res.status(400).send(interval.error);
     const isGood = state === 'good';
 
     const conn = await db.getConnection();
@@ -245,8 +282,8 @@ router.post('/create', authenticate, requireAdmin, async (req, res) => {
         await conn.query(
             `INSERT INTO tools
                (id, name, category, photo_url, state, defect_rank, defect_note,
-                pin_x, pin_y, purchase_date, last_inspection_date)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                pin_x, pin_y, purchase_date, last_inspection_date, inspection_interval_months)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id,
                 name,
@@ -259,6 +296,7 @@ router.post('/create', authenticate, requireAdmin, async (req, res) => {
                 pin?.y ?? null,
                 purchaseDate || null,
                 lastInspectionDate || null,
+                interval.value,
             ]
         );
         await setInspectionItems(conn, id, inspectionItemIds);
@@ -266,7 +304,11 @@ router.post('/create', authenticate, requireAdmin, async (req, res) => {
         res.status(201).json({ id });
     } catch (err) {
         await conn.rollback();
-        if (err.code === 'ER_DUP_ENTRY') return res.status(409).send('そのIDの工具は既に登録されています。');
+        if (err.code === 'ER_DUP_ENTRY') {
+            return res
+                .status(409)
+                .send('そのIDの工具は既に登録されています（無効化した工具の場合は「元に戻す」を使ってください）。');
+        }
         console.error(err);
         res.status(500).send('工具の追加に失敗しました。');
     } finally {
@@ -275,17 +317,18 @@ router.post('/create', authenticate, requireAdmin, async (req, res) => {
 });
 
 // 本体に渡された項目だけを更新する（項目を省くと現在値のまま、null や '' を渡すと空にする）。
-// 名前・大項目・写真・購入日・点検項目の変更は管理者のみ。
-const ADMIN_FIELDS = ['name', 'category', 'photoUrl', 'purchaseDate', 'inspectionItemIds'];
+// 名前・大項目・写真・購入日・点検の周期・点検項目の変更は管理者のみ。
+const ADMIN_FIELDS = ['name', 'category', 'photoUrl', 'purchaseDate', 'inspectionIntervalMonths', 'inspectionItemIds'];
 
 router.post('/update', authenticate, async (req, res) => {
     const body = req.body;
     const { id } = body;
     if (!id) return res.status(400).send('IDは必須です。');
-    const isAdmin = req.user.permission === '管理者';
-    if (!isAdmin && ADMIN_FIELDS.some((f) => f in body)) {
-        return res.status(403).send('名前・大項目・写真・購入日・点検項目の変更は管理者のみ可能です。');
+    if (!isAdmin(req.user) && ADMIN_FIELDS.some((f) => f in body)) {
+        return res.status(403).send('名前・大項目・写真・購入日・点検の周期・点検項目の変更は管理者のみ可能です。');
     }
+    const interval = parseInterval(body.inspectionIntervalMonths);
+    if (interval.error) return res.status(400).send(interval.error);
     const invalid = validateDefect(body);
     if (invalid) return res.status(400).send(invalid);
     if ('name' in body && !body.name) return res.status(400).send('名前は空にできません。');
@@ -305,6 +348,7 @@ router.post('/update', authenticate, async (req, res) => {
     set('defectNote', 'defect_note');
     set('purchaseDate', 'purchase_date');
     set('lastInspectionDate', 'last_inspection_date');
+    set('inspectionIntervalMonths', 'inspection_interval_months', interval.value);
     if ('pin' in body) {
         sets.push('pin_x = ?', 'pin_y = ?');
         params.push(body.pin?.x ?? null, body.pin?.y ?? null);
@@ -313,7 +357,7 @@ router.post('/update', authenticate, async (req, res) => {
     const conn = await db.getConnection();
     try {
         await conn.beginTransaction();
-        const [exists] = await conn.query('SELECT id FROM tools WHERE id = ? FOR UPDATE', [id]);
+        const [exists] = await conn.query('SELECT id FROM tools WHERE id = ? AND active = 1 FOR UPDATE', [id]);
         if (exists.length === 0) {
             await conn.rollback();
             return res.status(404).send('該当する工具がありません。');
@@ -360,7 +404,7 @@ router.post('/inspect', authenticate, async (req, res) => {
     const conn = await db.getConnection();
     try {
         await conn.beginTransaction();
-        const [tools] = await conn.query('SELECT id FROM tools WHERE id = ? FOR UPDATE', [toolId]);
+        const [tools] = await conn.query('SELECT id FROM tools WHERE id = ? AND active = 1 FOR UPDATE', [toolId]);
         if (tools.length === 0) {
             await conn.rollback();
             return res.status(404).send('該当する工具がありません。');
@@ -415,7 +459,9 @@ router.post('/inspect', authenticate, async (req, res) => {
     }
 });
 
-// 工具削除（管理者のみ）
+// 工具の無効化（管理者のみ）。廃棄などで使わなくなった工具を一覧から外す。
+// 行は消さないので、貸出・点検・更新の履歴は残る。予約は取り消す。
+// 貸出中の工具は無効化できない（先に返却する）。
 router.post('/delete', authenticate, requireAdmin, async (req, res) => {
     const { id } = req.body;
     if (!id) return res.status(400).send('IDは必須です。');
@@ -423,20 +469,60 @@ router.post('/delete', authenticate, requireAdmin, async (req, res) => {
     const conn = await db.getConnection();
     try {
         await conn.beginTransaction();
-        // rentals.tool_id は ON DELETE RESTRICT なので貸出履歴を先に消す
-        // （点検・更新履歴は ON DELETE CASCADE で一緒に消える）
-        await conn.query('DELETE FROM rentals WHERE tool_id = ?', [id]);
-        const [result] = await conn.query('DELETE FROM tools WHERE id = ?', [id]);
-        if (result.affectedRows === 0) {
+        const [rows] = await conn.query('SELECT id FROM tools WHERE id = ? AND active = 1 FOR UPDATE', [id]);
+        if (rows.length === 0) {
             await conn.rollback();
             return res.status(404).send('該当する工具がありません。');
         }
+        const [renting] = await conn.query(
+            `SELECT COUNT(*) AS c FROM rentals WHERE tool_id = ? AND status = 'renting'`,
+            [id]
+        );
+        if (Number(renting[0].c) > 0) {
+            await conn.rollback();
+            return res.status(409).send('貸出中のため無効化できません。返却してから無効化してください。');
+        }
+
+        await conn.query(
+            `UPDATE rentals SET status = 'cancelled', returned_by = ? WHERE tool_id = ? AND status = 'reserved'`,
+            [req.user.id, id]
+        );
+        await withToolChangeLog(conn, { toolId: id, employeeId: req.user.id, source: 'edit' }, () =>
+            conn.query('UPDATE tools SET active = 0, deactivated_at = ? WHERE id = ?', [nowJst(), id])
+        );
         await conn.commit();
         res.json({ id });
     } catch (err) {
         await conn.rollback();
         console.error(err);
-        res.status(500).send('工具の削除に失敗しました。');
+        res.status(500).send('工具の無効化に失敗しました。');
+    } finally {
+        conn.release();
+    }
+});
+
+// 無効化した工具を元に戻す（管理者のみ）
+router.post('/restore', authenticate, requireAdmin, async (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.status(400).send('IDは必須です。');
+
+    const conn = await db.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [rows] = await conn.query('SELECT id FROM tools WHERE id = ? AND active = 0 FOR UPDATE', [id]);
+        if (rows.length === 0) {
+            await conn.rollback();
+            return res.status(404).send('無効化された工具が見つかりません。');
+        }
+        await withToolChangeLog(conn, { toolId: id, employeeId: req.user.id, source: 'edit' }, () =>
+            conn.query('UPDATE tools SET active = 1, deactivated_at = NULL WHERE id = ?', [id])
+        );
+        await conn.commit();
+        res.json({ id });
+    } catch (err) {
+        await conn.rollback();
+        console.error(err);
+        res.status(500).send('工具を元に戻せませんでした。');
     } finally {
         conn.release();
     }

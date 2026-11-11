@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
+    "dev:http": "vite --host --mode http",
     "build": "vite build",
+    "test": "node --test \"test/*.test.js\"",
     "lint": "eslint .",
     "preview": "vite preview"
   },

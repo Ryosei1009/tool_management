@@ -1,5 +1,6 @@
 const { getMapName } = require('./map');
-const { toJpDate, toJpSlot, toJpDateTime } = require('./time');
+const { toJpDate, toJpSlot, toJpDateTime, todayJst, currentSlot, slotKey } = require('./time');
+const { inspectionInfo } = require('./inspection');
 
 // YYYY-MM-DD（<input type="date"> がそのまま扱える形式）
 const toIsoDate = (value) => {
@@ -17,6 +18,13 @@ const toPin = (x, y) =>
 const toToolResponse = (row) => {
     const pin = toPin(row.pin_x, row.pin_y);
     const rentalStatus = row.rental_id ? (row.rental_status ?? 'renting') : null;
+    const inspection = inspectionInfo(row, todayJst());
+    // 貸出中で、返却予定の半日枠を過ぎている
+    const now = currentSlot();
+    const isOverdue =
+        rentalStatus === 'renting' &&
+        Boolean(row.end_date) &&
+        slotKey(row.end_date, row.end_period) < slotKey(now.date, now.period);
 
     return {
         id: row.id,
@@ -31,6 +39,12 @@ const toToolResponse = (row) => {
         place: pin ? getMapName(pin.x, pin.y) : null,
         purchaseDate: toIsoDate(row.purchase_date),
         lastInspectionDate: toIsoDate(row.last_inspection_date),
+        // 点検の周期（月）。inspectionIntervalMonths は設定値（未設定は null）、
+        // inspection は実際に使う周期・次回点検日・状態（none / ok / soon / overdue）
+        inspectionIntervalMonths: row.inspection_interval_months ?? null,
+        inspection,
+        // 無効化（廃棄など）した工具は false。一覧には出ず、貸出・予約もできない
+        active: row.active === undefined ? true : Boolean(row.active),
         // 貸出（または予約）の情報。JOIN したときだけ入る
         user: row.user_name ?? '',
         userId: row.user_id ?? null,
@@ -50,6 +64,7 @@ const toToolResponse = (row) => {
         takenById: row.taken_by ?? null,
         takenBy: row.taken_by_name ?? null,
         isRented: rentalStatus === 'renting',
+        isOverdue,
         isReserved: rentalStatus === 'reserved',
     };
 };
@@ -70,6 +85,8 @@ const toEmployeeResponse = (row) => {
         bloodType: row.blood_type,
         permission: row.permission,
         photoUrl: row.photo_url,
+        active: row.active === undefined ? true : Boolean(row.active),
+        mustChangePassword: Boolean(row.must_change_password),
         defaultPin,
         defaultPlace: defaultPin ? getMapName(defaultPin.x, defaultPin.y) : null,
     };

@@ -1,0 +1,5 @@
+# docker compose 用の設定（パスワードと秘密鍵が入る）
+.env
+
+# scripts/backup.sh の保存先（社員の情報が入る）
+backups/

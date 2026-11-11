@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/pool').promise;
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 const { toToolResponse, toRangeLabel } = require('../utils/format');
 const { canActFor } = require('../utils/permission');
 const { withToolChangeLog } = require('../utils/changeLog');
@@ -64,7 +64,7 @@ router.get('/mine', authenticate, async (req, res) => {
 });
 
 // 貸出中・予約中の全件（管理者向けの一覧用）
-router.get('/get', authenticate, async (req, res) => {
+router.get('/get', authenticate, requireAdmin, async (req, res) => {
     try {
         const [rows] = await db.query(`${RENTAL_SELECT} ${RENTAL_ORDER}`);
         res.json(rows.map(toToolResponse));
@@ -190,10 +190,13 @@ router.post(
         if (!(await canActFor(conn, req.user, borrowerId))) {
             throw new HttpError(403, '代理で借りられるのは同じ班のメンバーの分だけです。');
         }
-        const [borrowers] = await conn.query('SELECT id FROM employees WHERE id = ?', [borrowerId]);
+        const [borrowers] = await conn.query('SELECT id FROM employees WHERE id = ? AND active = 1', [borrowerId]);
         if (borrowers.length === 0) throw new HttpError(404, '借りる人が見つかりません。');
 
-        const [tools] = await conn.query('SELECT id, category FROM tools WHERE id = ? FOR UPDATE', [toolId]);
+        const [tools] = await conn.query(
+            'SELECT id, category FROM tools WHERE id = ? AND active = 1 FOR UPDATE',
+            [toolId]
+        );
         if (tools.length === 0) throw new HttpError(404, '該当する工具がありません。');
         // 予約の時点ではまだ持ち出さないので、荷重の確認は今すぐ借りるときだけ
         if (mode === 'rent') assertLoadChecked(tools[0].category, loadChecked);
@@ -388,7 +391,7 @@ router.post(
         if (rental.employee_id === toEmployeeId) throw new HttpError(400, '今借りている人には渡せません。');
 
         const [employees] = await conn.query(
-            'SELECT id, default_pin_x, default_pin_y FROM employees WHERE id = ?',
+            'SELECT id, default_pin_x, default_pin_y FROM employees WHERE id = ? AND active = 1',
             [toEmployeeId]
         );
         if (employees.length === 0) throw new HttpError(404, '渡す相手の社員が見つかりません。');

@@ -21,6 +21,12 @@ const FIELDS = [
     { label: '不良内容', value: (r) => r.defect_note ?? '' },
     { label: '購入日', value: (r) => iso(r.purchase_date) },
     { label: '最終点検日', value: (r) => iso(r.last_inspection_date) },
+    {
+        label: '点検の周期',
+        value: (r) => (r.inspection_interval_months ? String(r.inspection_interval_months) : ''),
+        display: (v) => (v ? `${v}か月ごと` : ''),
+    },
+    { label: '利用', value: (r) => (r.active ? '1' : '0'), display: (v) => (v === '1' ? '利用中' : '無効化') },
 ];
 
 // 点検項目は { inspectionItems: ['外観', ...] } を行に足して渡すと比べる

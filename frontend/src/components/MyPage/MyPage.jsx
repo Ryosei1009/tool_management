@@ -7,6 +7,8 @@ import { fetchMe, resolveImageUrl, updateDefaultPin } from '../../api'
 import { useFetch } from '../../hooks/useFetch'
 import { ErrorMessage, Loading } from '../Util/AsyncState'
 import { useAuth } from '../../auth/AuthContext'
+import { PasswordFields } from '../../auth/ChangePasswordForm'
+import { ADMIN, LEADER } from '../../utils/roles'
 
 // 社員情報の項目（ラベル + 値）
 const InfoField = ({ label, value }) => (
@@ -97,6 +99,60 @@ const DefaultPinSection = ({ employee, onSaved }) => {
     )
 }
 
+// パスワードの変更。押すまでは入力欄を出さない（画面を長くしないため）。
+const PasswordSection = ({ employee }) => {
+    const [open, setOpen] = useState(false)
+    const [message, setMessage] = useState('')
+
+    return (
+        <div className="px-5 pt-8">
+            <SubHeading>パスワード</SubHeading>
+            {message && (
+                <p role="status" className="pb-4 text-lg font-bold text-state-good">
+                    {message}
+                </p>
+            )}
+            {open ? (
+                <div className="max-w-xl">
+                    <PasswordFields
+                        userId={employee.id}
+                        onChanged={() => {
+                            setOpen(false)
+                            setMessage('パスワードを変更しました。他の端末でログインしていた場合は、ログインし直してください。')
+                        }}
+                    />
+                    <Button variant="secondary" size="md" className="mt-4" onClick={() => setOpen(false)}>
+                        やめる
+                    </Button>
+                </div>
+            ) : (
+                <Button
+                    variant="secondary"
+                    size="md"
+                    onClick={() => {
+                        setMessage('')
+                        setOpen(true)
+                    }}
+                >
+                    パスワードを変更する
+                </Button>
+            )}
+        </div>
+    )
+}
+
+// 管理者・班長メニューのリンク
+const MenuLink = ({ to, primary = false, children }) => (
+    <Link
+        to={to}
+        className={`touch-target inline-flex items-center gap-3 rounded-xl border-2 px-8 text-xl font-extrabold ${
+            primary ? 'border-main bg-main text-surface' : 'border-ink bg-surface text-ink'
+        }`}
+    >
+        {children}
+    </Link>
+)
+
 const MyPage = () => {
     const load = useCallback(() => fetchMe(), [])
     const { data: employee, loading, error, reload } = useFetch(load)
@@ -175,29 +231,34 @@ const MyPage = () => {
                         </div>
                     </div>
 
+                    {employee && <PasswordSection employee={employee} />}
+
                     {/* 管理者専用 */}
-                    {permission === '管理者' && (
+                    {permission === ADMIN && (
                         <div className="px-5 pt-8">
                             <SubHeading>管理者メニュー</SubHeading>
                             <div className="flex flex-wrap gap-4">
-                                <Link
-                                    to="/newtool"
-                                    className="touch-target inline-flex items-center gap-3 rounded-xl border-2 border-main bg-main px-8 text-xl font-extrabold text-surface"
-                                >
-                                    工具を追加
-                                </Link>
-                                <Link
-                                    to="/employees"
-                                    className="touch-target inline-flex items-center gap-3 rounded-xl border-2 border-ink bg-surface px-8 text-xl font-extrabold text-ink"
-                                >
-                                    社員一覧
-                                </Link>
-                                <Link
-                                    to="/inspection-items"
-                                    className="touch-target inline-flex items-center gap-3 rounded-xl border-2 border-ink bg-surface px-8 text-xl font-extrabold text-ink"
-                                >
-                                    点検項目の管理
-                                </Link>
+                                <MenuLink to="/dashboard" primary>
+                                    管理ダッシュボード
+                                </MenuLink>
+                                <MenuLink to="/newtool">工具を追加</MenuLink>
+                                <MenuLink to="/employees">社員一覧</MenuLink>
+                                <MenuLink to="/inspection-items">点検項目の管理</MenuLink>
+                                <MenuLink to="/csv">CSV の入出力</MenuLink>
+                                <MenuLink to="/map-settings">マップの設定</MenuLink>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 班長専用：自分の班のメンバーの貸出状況と、パスワードの初期化・ロックの解除 */}
+                    {permission === LEADER && (
+                        <div className="px-5 pt-8">
+                            <SubHeading>班長メニュー</SubHeading>
+                            <div className="flex flex-wrap gap-4">
+                                <MenuLink to="/dashboard" primary>
+                                    班の貸出状況
+                                </MenuLink>
+                                <MenuLink to="/employees">社員一覧</MenuLink>
                             </div>
                         </div>
                     )}
@@ -205,12 +266,12 @@ const MyPage = () => {
                     {/* ヘルプ */}
                     <div className="px-5 pb-8 pt-8">
                         <SubHeading>ヘルプ</SubHeading>
-                        <a
-                            href="#"
+                        <Link
+                            to="/help"
                             className="touch-target inline-flex items-center text-xl font-bold text-steel underline underline-offset-4"
                         >
                             使い方ガイド・FAQ
-                        </a>
+                        </Link>
                         <div className="pt-6">
                             <Button variant="secondary" size="md" onClick={signOut}>
                                 ログアウト

@@ -4,6 +4,7 @@ import MapPicker from '../Util/MapPicker'
 import Button from '../Util/Button'
 import ChoiceInput from '../Util/ChoiceInput'
 import { createEmployee, updateEmployee } from '../../api'
+import { PASSWORD_RULE, ROLES, checkPassword } from '../../utils/roles'
 
 // 入力欄。ラベルは常時表示（プレースホルダだけに頼らない）、必須は文字でも示す。
 const Field = ({ id, label, required, hint, children }) => (
@@ -31,7 +32,8 @@ const EMPTY = {
 }
 
 // 社員の追加 / 編集モーダル。employee が null なら新規追加。
-const EmployeeModal = ({ isOpen, setIsOpen, employee, onSaved, teams = [] }) => {
+// isMe … 自分自身を編集している（自分の権限は変えられない）
+const EmployeeModal = ({ isOpen, setIsOpen, employee, onSaved, teams = [], isMe = false }) => {
     const isNew = !employee
     const [form, setForm] = useState(EMPTY)
     const [saving, setSaving] = useState(false)
@@ -57,7 +59,8 @@ const EmployeeModal = ({ isOpen, setIsOpen, employee, onSaved, teams = [] }) => 
 
     const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
-    const canSave = form.id && form.name && (!isNew || form.password) && !saving
+    const passwordProblem = isNew ? checkPassword(form.password, form.id) : ''
+    const canSave = form.id && form.name && (!isNew || form.password) && !passwordProblem && !saving
 
     const handleSave = async () => {
         setSaving(true)
@@ -71,7 +74,8 @@ const EmployeeModal = ({ isOpen, setIsOpen, employee, onSaved, teams = [] }) => 
                     name: form.name,
                     team: form.team,
                     bloodType: form.bloodType,
-                    permission: form.permission,
+                    // 自分自身の権限は変えられないので送らない
+                    ...(!isMe && { permission: form.permission }),
                     // 未設定に戻したいときは null を送る
                     defaultPin: form.defaultPin,
                 })
@@ -174,15 +178,27 @@ const EmployeeModal = ({ isOpen, setIsOpen, employee, onSaved, teams = [] }) => 
                                         />
                                     </Field>
 
-                                    <Field id="emp-permission" label="権限">
+                                    <Field
+                                        id="emp-permission"
+                                        label="権限"
+                                        hint={
+                                            isMe
+                                                ? '自分自身の権限は変更できません。'
+                                                : '班長は、自分の班のメンバーの貸出状況の確認・パスワードの初期化・ロックの解除ができます。'
+                                        }
+                                    >
                                         <select
                                             id="emp-permission"
                                             value={form.permission}
                                             onChange={set('permission')}
-                                            className={inputClass}
+                                            disabled={isMe}
+                                            className={`${inputClass} disabled:bg-field disabled:text-sub`}
                                         >
-                                            <option value="一般">一般</option>
-                                            <option value="管理者">管理者</option>
+                                            {ROLES.map((role) => (
+                                                <option key={role} value={role}>
+                                                    {role}
+                                                </option>
+                                            ))}
                                         </select>
                                     </Field>
 
@@ -191,7 +207,7 @@ const EmployeeModal = ({ isOpen, setIsOpen, employee, onSaved, teams = [] }) => 
                                             id="emp-password"
                                             label="初期パスワード"
                                             required
-                                            hint="本人に伝え、初回ログイン後に変更してもらってください。"
+                                            hint={`${PASSWORD_RULE} 本人に伝え、初回ログインで変更してもらいます。`}
                                         >
                                             <input
                                                 id="emp-password"
@@ -228,9 +244,9 @@ const EmployeeModal = ({ isOpen, setIsOpen, employee, onSaved, teams = [] }) => 
                             </div>
 
                             <div className="border-t-2 border-line px-5 py-5">
-                                {error && (
+                                {(error || passwordProblem) && (
                                     <p role="alert" className="pb-3 text-lg font-bold text-accent">
-                                        ✕ {error}
+                                        ✕ {error || passwordProblem}
                                     </p>
                                 )}
                                 <div className="flex gap-4">

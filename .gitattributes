@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# シェルスクリプトは Linux のサーバーで動かすので、Windows でチェックアウトしても LF のままにする
+*.sh text eol=lf

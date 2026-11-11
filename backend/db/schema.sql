@@ -10,8 +10,18 @@ CREATE TABLE IF NOT EXISTS employees (
   team          VARCHAR(64)      NULL,                   -- 同じ班のメンバーは代理で貸し借りできる
   blood_type    VARCHAR(8)       NULL,
   photo_url     VARCHAR(255)     NULL,
-  permission    ENUM('管理者','一般') NOT NULL DEFAULT '一般',
+  permission    ENUM('管理者','班長','一般') NOT NULL DEFAULT '一般',
   password_hash VARCHAR(255) NOT NULL,
+  -- 初期パスワード・管理者による初期化のあとは 1。本人が変更するまで他の操作はできない。
+  must_change_password TINYINT(1) NOT NULL DEFAULT 0,
+  -- ログインの連続失敗回数と、ロックが解ける日時（日本時間）。5回失敗で15分ロックする。
+  failed_logins INT          NOT NULL DEFAULT 0,
+  locked_until  DATETIME         NULL,
+  -- パスワード変更のたびに 1 増やす。発行済みのトークンは番号が合わなくなり無効になる。
+  token_version INT          NOT NULL DEFAULT 0,
+  -- 0 = 無効化（退職など）。行は消さないので、過去の貸出履歴に名前が残る。
+  active        TINYINT(1)   NOT NULL DEFAULT 1,
+  deactivated_at DATETIME        NULL,
   -- 工具を借りるときに初期表示する持ち出し場所のピン（%）。未設定なら工具の現在位置を使う。
   default_pin_x DECIMAL(6,3)    NULL,
   default_pin_y DECIMAL(6,3)    NULL,
@@ -33,6 +43,11 @@ CREATE TABLE IF NOT EXISTS tools (
   pin_y                DECIMAL(6,3)    NULL,
   purchase_date        DATE            NULL,             -- 購入日（経過年数の表示に使う）
   last_inspection_date DATE            NULL,
+  -- 点検の周期（月）。NULL なら期限なし。次回点検日 = 最終点検日 + この月数。
+  inspection_interval_months INT       NULL,
+  -- 0 = 無効化（廃棄など）。行は消さないので、貸出・点検の履歴が残る。
+  active               TINYINT(1)  NOT NULL DEFAULT 1,
+  deactivated_at       DATETIME        NULL,
   created_at           DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at           DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_tools_name (name),
@@ -123,4 +138,11 @@ CREATE TABLE IF NOT EXISTS tool_change_logs (
   changes     TEXT        NOT NULL,
   CONSTRAINT fk_change_logs_tool FOREIGN KEY (tool_id) REFERENCES tools(id) ON DELETE CASCADE,
   INDEX idx_change_logs_tool (tool_id, changed_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- アプリ全体の設定（マップ画像と区画など）。value は JSON 文字列。
+CREATE TABLE IF NOT EXISTS app_settings (
+  name       VARCHAR(64) NOT NULL PRIMARY KEY,
+  value      TEXT        NOT NULL,
+  updated_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

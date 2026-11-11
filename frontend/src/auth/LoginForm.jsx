@@ -3,7 +3,8 @@ import Button from '../components/Util/Button'
 
 // 社員ID + パスワードのログイン画面。
 // 手袋でも押しやすいよう入力欄とボタンは大きく取り、エラーは文言で示す。
-const LoginForm = ({ onLogin }) => {
+// notice … ログイン画面に戻された理由（「ログインが無効になりました」など）
+const LoginForm = ({ onLogin, notice = '' }) => {
     const [id, setId] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
@@ -64,6 +65,12 @@ const LoginForm = ({ onLogin }) => {
                     autoComplete="current-password"
                     className={`${inputClass} mb-6`}
                 />
+
+                {notice && !error && (
+                    <p role="status" className="mb-6 font-semibold text-state-bad">
+                        ▲ {notice}
+                    </p>
+                )}
 
                 {error && (
                     <p role="alert" className="mb-6 font-semibold text-red-600">
