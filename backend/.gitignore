@@ -4,3 +4,4 @@ logs/*.txt
 images/*
 !images/.gitkeep
 cert/
+logs/*.log

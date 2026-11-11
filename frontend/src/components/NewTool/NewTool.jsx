@@ -31,6 +31,7 @@ const EMPTY = {
     id: '',
     category: '',
     purchaseDate: '',
+    inspectionIntervalMonths: '',
     state: 'good',
     defectRank: null,
     defectNote: '',
@@ -91,6 +92,7 @@ const NewTool = () => {
                 name: tool.name,
                 category: tool.category.trim(),
                 purchaseDate: tool.purchaseDate || null,
+                inspectionIntervalMonths: tool.inspectionIntervalMonths || null,
                 state: tool.state,
                 defectRank: tool.state === 'good' ? null : tool.defectRank,
                 defectNote: tool.state === 'good' ? '' : tool.defectNote,
@@ -117,7 +119,8 @@ const NewTool = () => {
         handleCreate()
     }, [isConfirmed, handleCreate])
 
-    const canSubmit = tool.id && tool.name && !submitting
+    const validId = /^[A-Za-z0-9_-]{1,32}$/.test(tool.id)
+    const canSubmit = validId && tool.name && !submitting
 
     return (
         <div className="flex w-full items-start justify-center bg-surface pb-nav">
@@ -147,14 +150,14 @@ const NewTool = () => {
                             id="tool-id"
                             label="工具ID"
                             required
-                            hint="QRコードに埋め込まれます。他の工具と重複しない番号にしてください。"
+                            hint="QRコードに埋め込まれます。半角の英数字・ハイフン・アンダーバーで、他の工具と重複しない番号にしてください。"
                         >
                             <input
                                 id="tool-id"
                                 type="text"
                                 value={tool.id}
                                 onChange={(e) => setTool({ ...tool, id: e.target.value })}
-                                maxLength={30}
+                                maxLength={32}
                                 placeholder="PENCH-0001"
                                 className={inputClass}
                             />
@@ -186,6 +189,24 @@ const NewTool = () => {
                                 type="date"
                                 value={tool.purchaseDate}
                                 onChange={(e) => setTool({ ...tool, purchaseDate: e.target.value })}
+                                className={inputClass}
+                            />
+                        </Field>
+
+                        <Field
+                            id="tool-interval"
+                            label="点検の周期（月）"
+                            hint="例：12 と入れると、最終点検日から12か月後が次回点検日になります。空のままなら期限なしです。"
+                        >
+                            <input
+                                id="tool-interval"
+                                type="number"
+                                inputMode="numeric"
+                                min={1}
+                                max={120}
+                                value={tool.inspectionIntervalMonths}
+                                onChange={(e) => setTool({ ...tool, inspectionIntervalMonths: e.target.value })}
+                                placeholder="12"
                                 className={inputClass}
                             />
                         </Field>

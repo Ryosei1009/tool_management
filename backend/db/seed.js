@@ -47,8 +47,8 @@ const main = async () => {
         const hash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
         for (const e of EMPLOYEES) {
             await conn.query(
-                `INSERT INTO employees (id, name, team, blood_type, permission, photo_url, password_hash)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO employees (id, name, team, blood_type, permission, photo_url, password_hash, must_change_password)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
                 [e.id, e.name, e.team, e.bloodType, e.permission, '/img/tmp/tmp_icon.png', hash]
             );
         }

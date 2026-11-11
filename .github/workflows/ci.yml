@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: backend（API のテスト）
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -pci-root-password --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ci-root-password
+      # テストは、このテスト用データベースの中身を毎回消して入れ直す
+      TM_MYSQL_DATABASE: tool_management_test
+      TZ: Asia/Tokyo
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: スキーマを作る
+        run: node db/setup.js
+      - name: テスト
+        run: npm test
+
+  frontend:
+    name: frontend（テストとビルド）
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: テスト
+        run: npm test
+      - name: ビルド
+        run: npm run build
+      # 既存のコードに lint の指摘が残っているため、今は結果を見るだけにしている。
+      # 指摘をなくしたら continue-on-error を外して必須にする。
+      - name: lint（参考）
+        run: npm run lint
+        continue-on-error: true

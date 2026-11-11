@@ -7,7 +7,9 @@ import DefectRankBadge from '../Util/DefectRankBadge'
 import CategorySelect from '../Util/CategorySelect'
 import { fetchTools, resolveImageUrl } from '../../api'
 import { matchesKeyword } from '../../utils/search'
-import { getCategories, getInspectionStatus, getPurchaseAge, isRope, ROPE_INSPECTION_MONTHS } from '../../utils/toolInfo'
+import { describeInspection, getCategories, getPurchaseAge, isRope } from '../../utils/toolInfo'
+import { useAuth } from '../../auth/AuthContext'
+import { isAdmin } from '../../utils/roles'
 import { useFetch } from '../../hooks/useFetch'
 import { Empty, ErrorMessage, Loading } from '../Util/AsyncState'
 import { DEFAULT_SORT, SORT_OPTIONS, getSortOption, sortTools } from '../../utils/toolSort'
@@ -80,24 +82,33 @@ const SortControl = ({ sort, onChange }) => {
 // 色だけに頼らないよう「貸出中 / 貸出可能」の文字も必ず併記する。
 const Label = ({ children }) => <span className="mr-2 text-base font-medium text-sub">{children}</span>
 
-// ロープの点検が期限内かどうか。安全に関わるので、色に加えてアイコンと文字で大きく示す。
-const InspectionStatus = ({ status }) => (
-    <p
-        className={`flex flex-wrap items-center gap-x-4 rounded-xl px-3 py-1 text-lg font-extrabold ${
-            status.ok ? 'border-2 border-state-good text-state-good' : 'bg-accent text-surface'
-        }`}
-    >
-        <span>
-            <span aria-hidden="true" className="mr-1">
-                {status.ok ? '●' : '✕'}
-            </span>
-            {status.label}
-        </span>
-        <span className={`text-base font-bold ${status.ok ? 'text-sub' : ''}`}>{status.detail}</span>
-    </p>
-)
+// 点検が期限内かどうか。安全に関わるので、色に加えてアイコンと文字で大きく示す。
+//   期限切れ … 赤地に ✕ ／ まもなく … 橙の枠に ▲ ／ 期限内 … 青の枠に ●
+const INSPECTION_STYLES = {
+    overdue: { className: 'bg-accent text-surface', icon: '✕' },
+    soon: { className: 'border-2 border-state-bad text-state-bad', icon: '▲' },
+    ok: { className: 'border-2 border-state-good text-state-good', icon: '●' },
+}
 
-// showInspection … ロープで絞り込んでいるとき、点検が3か月以内かを出す
+const InspectionStatus = ({ status }) => {
+    const { className, icon } = INSPECTION_STYLES[status.status]
+    return (
+        <p className={`flex flex-wrap items-center gap-x-4 rounded-xl px-3 py-1 text-lg font-extrabold ${className}`}>
+            <span>
+                <span aria-hidden="true" className="mr-1">
+                    {icon}
+                </span>
+                {status.label}
+            </span>
+            <span className={`text-base font-bold ${status.status === 'overdue' ? '' : 'text-sub'}`}>
+                {status.detail}
+            </span>
+        </p>
+    )
+}
+
+// 点検の状況は、期限切れ・まもなく期限のときは常に出す。
+// showInspection … ロープで絞り込んでいるときは、期限内のものにも出す
 // showLastInspection … 最終点検日で並び替えているとき、最終点検日を出す
 const ToolCard = ({ tool, onSelect, showInspection, showLastInspection }) => {
     const {
@@ -115,18 +126,24 @@ const ToolCard = ({ tool, onSelect, showInspection, showLastInspection }) => {
         purchaseDate,
         lastInspectionDate,
         isRented,
+        active,
         reservations = [],
     } = tool
     const age = getPurchaseAge(purchaseDate)
-    const inspection = showInspection ? getInspectionStatus(lastInspectionDate) : null
+    const status = describeInspection(tool)
+    const inspection = status && (showInspection || status.status !== 'ok') ? status : null
 
     return (
         <li>
             <button
                 type="button"
                 onClick={onSelect}
-                className={`flex w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border-4 bg-surface px-4 py-3 text-left ${
-                    isRented ? 'border-accent' : 'border-available'
+                className={`flex w-full flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border-4 px-4 py-3 text-left ${
+                    !active
+                        ? 'border-dashed border-sub bg-field'
+                        : isRented
+                          ? 'border-accent bg-surface'
+                          : 'border-available bg-surface'
                 }`}
             >
                 <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 border-line bg-field">
@@ -176,7 +193,9 @@ const ToolCard = ({ tool, onSelect, showInspection, showLastInspection }) => {
                 </div>
 
                 <div className="min-w-52 flex-1">
-                    {isRented ? (
+                    {!active ? (
+                        <p className="text-lg font-extrabold text-sub">無効化済み（貸出・予約はできません）</p>
+                    ) : isRented ? (
                         <>
                             <p className="text-lg font-extrabold text-accent">貸出中</p>
                             <div className="flex flex-wrap gap-x-6 text-lg font-bold">
@@ -224,7 +243,11 @@ const ToolList = () => {
     const [category, setCategory] = useState('')
     const [selectedId, setSelectedId] = useState(null)
     const [sort, setSort] = useState(loadSort)
-    const load = useCallback(() => fetchTools(), [])
+    const { user } = useAuth()
+    const admin = isAdmin(user)
+    // 無効化した工具も表示する（管理者のみ）
+    const [showInactive, setShowInactive] = useState(false)
+    const load = useCallback(() => fetchTools({ includeInactive: admin && showInactive }), [admin, showInactive])
     const { data: tools, loading, error, reload } = useFetch(load)
 
     const changeSort = (next) => {
@@ -246,9 +269,9 @@ const ToolList = () => {
         sort
     )
     const isFiltered = Boolean(keyword || category)
-    // ロープで絞り込んでいるときだけ、点検が3か月以内かを確認できるようにする
+    // ロープで絞り込んでいるときは、期限内のものも含めて点検の状況を確認できるようにする
     const ropeMode = Boolean(category) && isRope(category)
-    const expiredCount = ropeMode ? filtered.filter((t) => !getInspectionStatus(t.lastInspectionDate).ok).length : 0
+    const expiredCount = ropeMode ? filtered.filter((t) => t.inspection?.status === 'overdue').length : 0
 
     return (
         <div className="flex w-full items-start justify-center bg-surface pb-nav">
@@ -286,6 +309,17 @@ const ToolList = () => {
                     <SortControl sort={sort} onChange={changeSort} />
                 </div>
 
+                {admin && (
+                    <label className="mb-4 flex min-h-touch items-center gap-4">
+                        <input
+                            type="checkbox"
+                            checked={showInactive}
+                            onChange={(e) => setShowInactive(e.target.checked)}
+                        />
+                        <span className="text-lg font-bold">無効化した工具も表示する</span>
+                    </label>
+                )}
+
                 {ropeMode && !loading && !error && filtered.length > 0 && (
                     <p
                         role="status"
@@ -297,14 +331,14 @@ const ToolList = () => {
                             {expiredCount > 0 ? '✕' : '●'}
                         </span>
                         {expiredCount > 0
-                            ? `点検が${ROPE_INSPECTION_MONTHS}か月を過ぎているロープが ${expiredCount} 件あります。使用せずに点検してください。`
-                            : `すべてのロープが点検から${ROPE_INSPECTION_MONTHS}か月以内です。`}
+                            ? `点検期限が切れているロープが ${expiredCount} 件あります。使用せずに点検してください。`
+                            : 'すべてのロープが点検の期限内です。'}
                     </p>
                 )}
 
-                {loading ? (
+                {loading && !tools ? (
                     <Loading />
-                ) : error ? (
+                ) : error && !tools ? (
                     <ErrorMessage message={error} onRetry={reload} />
                 ) : filtered.length === 0 ? (
                     <Empty>該当する工具がありません</Empty>

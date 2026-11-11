@@ -8,6 +8,11 @@ import MyPage from './components/MyPage/MyPage'
 import NewTool from './components/NewTool/NewTool'
 import EmployeeList from './components/EmployeeList/EmployeeList'
 import InspectionItems from './components/InspectionItems/InspectionItems'
+import Dashboard from './components/Dashboard/Dashboard'
+import CsvPage from './components/Csv/CsvPage'
+import MapSettings from './components/MapSettings/MapSettings'
+import NoticeBar from './components/Util/NoticeBar'
+import Help from './components/Help/Help'
 import AuthProvider from './auth/AuthProvider'
 
 function App() {
@@ -17,6 +22,8 @@ function App() {
       <AuthProvider>
         <Header />
         <main>
+          {/* オフラインの表示と、返却遅れ・点検期限などのお知らせ */}
+          <NoticeBar />
           <Routes>
             <Route path="/" element={<Navigate to="/tools" replace />} />
             <Route path="/rent" element={<Rent />} />
@@ -26,6 +33,10 @@ function App() {
             <Route path="/newtool" element={<NewTool />} />
             <Route path="/employees" element={<EmployeeList />} />
             <Route path="/inspection-items" element={<InspectionItems />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/csv" element={<CsvPage />} />
+            <Route path="/map-settings" element={<MapSettings />} />
+            <Route path="/help" element={<Help />} />
           </Routes>
           <Footer />
         </main>

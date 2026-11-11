@@ -1,0 +1,41 @@
+# 本番（shinoryo.com の VPS）用。API だけを動かす（画面は Vercel の tool.shinoryo.com）。
+#   /srv/tool に置いて `sudo docker compose -f compose.vps.yaml up -d --build` で起動する
+#   MySQL と Caddy は /srv/infra のものを使う（同じ db ネットワークに参加する）
+#   手順は docs/vps.md
+# docker-compose.yml（画面 + API + MySQL を全部まとめて動かす構成）とは別のもの。
+name: tool
+
+services:
+  api:
+    build: ./backend
+    container_name: tool
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: 4000
+      TZ: Asia/Tokyo
+      # Caddy の後ろにいるので、操作ログの IP は X-Forwarded-For（Caddy が本当の接続元を入れる）から取る
+      TRUST_PROXY: 1
+    # サーバーの中（Caddy）からだけ届くようにする。外には直接出さない
+    ports:
+      - "127.0.0.1:4000:4000"
+    # 工具の写真・マップ画像と操作ログは、コンテナを作り直しても消えないようにサーバーのフォルダに置く
+    volumes:
+      - ./data/images:/app/images
+      - ./data/logs:/app/logs
+    networks: [db]
+    mem_limit: 200m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  db:
+    external: true

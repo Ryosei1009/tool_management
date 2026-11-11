@@ -1,13 +1,24 @@
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
-const path = require('path');
 require('dotenv').config();
 
 const db = require('./db/pool');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+// JWT の秘密鍵が未設定・ひな形のままだと、誰でもトークンを作れてしまうので起動しない
+const secret = process.env.TM_JWT_SECRET || process.env.JWT_SECRET;
+if (!secret || secret === 'change-me-to-a-long-random-string' || secret.length < 16) {
+    console.error('JWT_SECRET が設定されていません。.env に 16 文字以上のランダムな文字列を設定してください。');
+    process.exit(1);
+}
+
+// 前段にリバースプロキシ（nginx など）を置くときは TRUST_PROXY=1 にすると、
+// 操作ログの IP アドレスが接続元のものになる。
+if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
+app.disable('x-powered-by');
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:5173')
     .split(',')
@@ -19,66 +30,26 @@ app.use(
         origin: (origin, cb) => {
             // curl や同一オリジンからのアクセスは origin が無い
             if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-            cb(new Error('CORS: 許可されていないオリジンです'));
+            const err = new Error('CORS: 許可されていないオリジンです');
+            err.status = 403;
+            cb(err);
         },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
+        // CSV をダウンロードするとき、フロントがファイル名を読めるようにする
+        exposedHeaders: ['Content-Disposition'],
     })
 );
-// アクセスログ（参照元と同じく短縮ログと詳細ログの2本立て）
-const logDir = 'logs';
-if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
 
-app.use((req, res, next) => {
-    const dateTime = new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
-    const shortLogFilePath = path.join(logDir, 'short-log.txt');
-    const logFilePath = path.join(logDir, 'detailed-log.txt');
-
-    const originalSend = res.send;
-
-    res.send = function (body) {
-        // パスワードやトークンはログに残さない
-        const safeBody = { ...req.body };
-        if (safeBody.password) safeBody.password = '***';
-        const safeHeaders = { ...req.headers };
-        if (safeHeaders.authorization) safeHeaders.authorization = '***';
-
-        const logMessage = `
-[${dateTime}]
-  Request Details:
-  Method: ${req.method}
-  URL: ${req.originalUrl}
-  Headers: ${JSON.stringify(safeHeaders)}
-  Query Parameters: ${JSON.stringify(req.query)}
-  Body: ${JSON.stringify(safeBody)}
-  Remote Address: ${req.ip}
-  User Agent: ${req.get('User-Agent')}
-
-  Response:
-  Status: ${res.statusCode}
----------------------------------------------
-`;
-        const shortLogMessage = `[${dateTime}] ${req.method} ${req.originalUrl} ${res.statusCode} [${req.ip}]`;
-        console.log(shortLogMessage);
-        fs.appendFile(shortLogFilePath, `${shortLogMessage}\n`, (err) => {
-            if (err) console.error('ログの書き込みエラー (short):', err);
-        });
-        fs.appendFile(logFilePath, logMessage, (err) => {
-            if (err) console.error('ログの書き込みエラー (detailed):', err);
-        });
-        return originalSend.call(this, body);
-    };
-    next();
-});
-
-// ルーティングは既存 API への組み込みと共通（router.js）
+// ルーティングと操作ログは既存 API への組み込みと共通（router.js）
 app.use(require('./router').api);
 
 // CORS のエラーを拾う（ルート内のエラーは router.js 側で処理する）
 app.use((err, req, res, next) => {
-    console.error(err);
-    res.status(err.status || 500).send(err.message || 'サーバーエラーが発生しました。');
+    const status = err.status || 500;
+    if (status >= 500) console.error(err);
+    res.status(status).send(status >= 500 ? 'サーバーエラーが発生しました。' : err.message);
 });
 
 db.getConnection((err, conn) => {

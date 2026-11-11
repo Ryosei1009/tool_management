@@ -48,33 +48,29 @@ export const getCategories = (tools) =>
 // 全角/半角・ひらがな/カタカナの違いは区別しない。
 export const isRope = (category) => normalize(category).includes('ろーぷ')
 
-// ロープの点検の有効期間（最終点検日からの月数）
-export const ROPE_INSPECTION_MONTHS = 3
+const ymd = (iso) => (iso ? iso.replace(/-/g, '/') : '')
 
-const formatYmd = (d) =>
-    `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
+// 点検の状況の表示。tool.inspection（backend が計算した周期・次回点検日・状態）から文言を作る。
+// 周期が設定されていない工具（期限なし）は null。
+//   { status: 'ok' | 'soon' | 'overdue', label, detail }
+export const describeInspection = (tool) => {
+    const info = tool?.inspection
+    if (!info || info.status === 'none') return null
+    const last = tool.lastInspectionDate
 
-// 最終点検日から months か月以内か。
-// { ok, label, detail }。点検日が無いものは期限切れと同じ扱い（ok: false）にする。
-export const getInspectionStatus = (lastInspectionDate, months = ROPE_INSPECTION_MONTHS, now = new Date()) => {
-    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(lastInspectionDate ?? '')
-    if (!m) return { ok: false, label: '点検記録なし', detail: '点検してから使用してください' }
-
-    const last = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
-    const due = new Date(last.getFullYear(), last.getMonth() + months, last.getDate())
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const days = Math.round((due - today) / 86400000)
-
-    if (days < 0) {
+    if (!last) {
+        return { status: 'overdue', label: '点検記録なし', detail: '点検してから使用してください' }
+    }
+    const detail = `最終点検 ${ymd(last)}・次回 ${ymd(info.nextDate)}`
+    if (info.status === 'overdue') {
+        return { status: 'overdue', label: `点検期限切れ（${-info.daysLeft} 日超過）`, detail }
+    }
+    if (info.status === 'soon') {
         return {
-            ok: false,
-            label: `点検期限切れ（${-days} 日超過）`,
-            detail: `最終点検 ${formatYmd(last)}・期限 ${formatYmd(due)}`,
+            status: 'soon',
+            label: info.daysLeft === 0 ? '今日が点検期限です' : `点検期限まで あと ${info.daysLeft} 日`,
+            detail,
         }
     }
-    return {
-        ok: true,
-        label: `点検 ${months}か月以内`,
-        detail: `最終点検 ${formatYmd(last)}・期限まで あと ${days} 日`,
-    }
+    return { status: 'ok', label: `点検の期限内（${info.intervalMonths}か月ごと）`, detail: `${detail}（あと ${info.daysLeft} 日）` }
 }

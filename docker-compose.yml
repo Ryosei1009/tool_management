@@ -1,0 +1,59 @@
+# 工具管理システム一式（画面 + API + MySQL）。
+#   準備: cp .env.docker.example .env  → パスワードと JWT_SECRET を書き換える
+#   起動: docker compose up -d --build
+#   手順の詳細は docs/operations.md
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?.env に MYSQL_ROOT_PASSWORD を設定してください}
+      MYSQL_DATABASE: tool_management
+      MYSQL_USER: tool
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?.env に MYSQL_PASSWORD を設定してください}
+      TZ: Asia/Tokyo
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_USER: tool
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: tool_management
+      JWT_SECRET: ${JWT_SECRET:?.env に JWT_SECRET を設定してください}
+      # 画面と同じホスト（nginx 経由）から呼ぶので、別オリジンは許可しない
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      # nginx の後ろにいるので、操作ログの IP は X-Forwarded-For から取る
+      TRUST_PROXY: 1
+      LOG_RETENTION_DAYS: ${LOG_RETENTION_DAYS:-90}
+      TZ: Asia/Tokyo
+    volumes:
+      - images:/app/images
+      - logs:/app/logs
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  db-data:
+  images:
+  logs:

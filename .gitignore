@@ -1,0 +1,8 @@
+# docker compose 用の設定（パスワードと秘密鍵が入る）
+.env
+
+# scripts/backup.sh の保存先（社員の情報が入る）
+backups/
+
+# 本番（compose.vps.yaml）の写真・操作ログの置き場所
+data/

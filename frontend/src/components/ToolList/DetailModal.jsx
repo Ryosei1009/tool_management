@@ -11,9 +11,18 @@ import Segmented from '../Util/Segmented'
 import InfoRow from '../Util/InfoRow'
 import ChoiceInput from '../Util/ChoiceInput'
 import { TOOL_STATES } from '../../utils/toolState'
-import { formatPurchase, getPurchaseAge } from '../../utils/toolInfo'
-import { fetchInspectionItems, fetchTool, inspectTool, resolveImageUrl, updateTool } from '../../api'
+import { describeInspection, formatPurchase, getPurchaseAge } from '../../utils/toolInfo'
+import {
+    deactivateTool,
+    fetchInspectionItems,
+    fetchTool,
+    inspectTool,
+    resolveImageUrl,
+    restoreTool,
+    updateTool,
+} from '../../api'
 import { useAuth } from '../../auth/AuthContext'
+import { isAdmin as hasAdminRole } from '../../utils/roles'
 
 const inputClass = 'w-full rounded-xl border-2 border-ink bg-surface px-4 text-xl font-bold'
 
@@ -31,6 +40,7 @@ const SOURCE_LABELS = {
     renew: '貸出の更新時',
     transfer: '引き渡し時',
     inspect: '点検時',
+    import: 'CSV の取り込み',
 }
 
 // 編集できる項目と、確認ダイアログに出す名前
@@ -42,6 +52,7 @@ const EDIT_FIELDS = [
     { key: 'defectRank', label: '不良ランク' },
     { key: 'defectNote', label: '不良内容' },
     { key: 'lastInspectionDate', label: '最終点検日' },
+    { key: 'inspectionIntervalMonths', label: '点検の周期', admin: true },
 ]
 
 const toForm = (tool) => ({
@@ -52,6 +63,8 @@ const toForm = (tool) => ({
     defectRank: tool.defectRank ?? null,
     defectNote: tool.defectNote ?? '',
     lastInspectionDate: tool.lastInspectionDate ?? '',
+    // 入力欄は文字列で持つ（空 = 期限なし）
+    inspectionIntervalMonths: tool.inspectionIntervalMonths ? String(tool.inspectionIntervalMonths) : '',
     pin: tool.pin,
 })
 
@@ -68,6 +81,28 @@ const ListBox = ({ empty, children }) => (
 )
 
 /* ---------------- 基本情報 ---------------- */
+
+// 点検の状況（期限切れ = 赤地に ✕ / まもなく = 橙の枠に ▲ / 期限内 = 青の枠に ●）
+const INSPECTION_STYLES = {
+    overdue: { className: 'bg-accent text-surface', icon: '✕' },
+    soon: { className: 'border-2 border-state-bad text-state-bad', icon: '▲' },
+    ok: { className: 'border-2 border-state-good text-state-good', icon: '●' },
+}
+
+const InspectionNotice = ({ tool }) => {
+    const status = describeInspection(tool)
+    if (!status) return <p className="text-base text-sub">点検の周期は設定されていません（期限なし）。</p>
+    const { className, icon } = INSPECTION_STYLES[status.status]
+    return (
+        <p className={`rounded-xl px-3 py-2 text-lg font-extrabold ${className}`}>
+            <span aria-hidden="true" className="mr-1">
+                {icon}
+            </span>
+            {status.label}
+            <span className="block text-base font-bold">{status.detail}</span>
+        </p>
+    )
+}
 
 const InfoTab = ({ tool, form, setForm, isAdmin, categories }) => {
     const age = getPurchaseAge(form.purchaseDate)
@@ -191,6 +226,33 @@ const InfoTab = ({ tool, form, setForm, isAdmin, categories }) => {
                         className={inputClass}
                     />
                     <p className="text-base text-sub">「点検」タブで点検を記録すると自動で更新されます。</p>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                    {isAdmin ? (
+                        <>
+                            <label htmlFor="tool-interval" className="text-lg font-bold">
+                                点検の周期（月）
+                            </label>
+                            <input
+                                id="tool-interval"
+                                type="number"
+                                inputMode="numeric"
+                                min={1}
+                                max={120}
+                                value={form.inspectionIntervalMonths}
+                                onChange={(e) => setForm({ ...form, inspectionIntervalMonths: e.target.value })}
+                                placeholder="空のままなら期限なし"
+                                className={inputClass}
+                            />
+                            <p className="text-base text-sub">
+                                最終点検日からこの月数が過ぎると期限切れになり、30日前からお知らせに出ます。
+                            </p>
+                        </>
+                    ) : (
+                        <p className="text-lg font-bold">点検の期限</p>
+                    )}
+                    <InspectionNotice tool={tool} />
                 </div>
 
                 <div>
@@ -469,7 +531,7 @@ const emptyCheck = () => ({ results: {}, note: '', state: 'bad', defectRank: nul
 
 const DetailModal = ({ isOpen, setIsOpen, toolId, categories = [], onUpdated }) => {
     const { user } = useAuth()
-    const isAdmin = user?.permission === '管理者'
+    const isAdmin = hasAdminRole(user)
 
     const [tab, setTab] = useState('info')
     const [tool, setTool] = useState(null)
@@ -579,6 +641,9 @@ const DetailModal = ({ isOpen, setIsOpen, toolId, categories = [], onUpdated }) 
                         name: form.name.trim(),
                         category: form.category.trim(),
                         purchaseDate: form.purchaseDate || null,
+                        inspectionIntervalMonths: form.inspectionIntervalMonths
+                            ? Number(form.inspectionIntervalMonths)
+                            : null,
                     }),
                 }),
             '工具情報を更新しました。変更内容は「履歴」タブで確認できます。'
@@ -608,6 +673,18 @@ const DetailModal = ({ isOpen, setIsOpen, toolId, categories = [], onUpdated }) 
     const saveAssign = () =>
         run(() => updateTool({ id: tool.id, inspectionItemIds: assign }), '点検項目を保存しました。')
 
+    /* 無効化（廃棄などで使わなくなった工具を一覧から外す。履歴は残る）と、元に戻す */
+    const inactive = tool?.active === false
+    const deactivate = () =>
+        run(() => deactivateTool(tool.id), '工具を無効化しました。一覧には表示されなくなります（履歴は残ります）。')
+    const restore = () => run(() => restoreTool(tool.id), '工具を元に戻しました。')
+
+    const intervalInvalid =
+        Boolean(form?.inspectionIntervalMonths) &&
+        !(Number.isInteger(Number(form.inspectionIntervalMonths)) &&
+            Number(form.inspectionIntervalMonths) >= 1 &&
+            Number(form.inspectionIntervalMonths) <= 120)
+
     const footer = tool && form && tab !== 'history' && (
         <>
             {error && (
@@ -620,10 +697,28 @@ const DetailModal = ({ isOpen, setIsOpen, toolId, categories = [], onUpdated }) 
                     {message}
                 </p>
             )}
-            {tab === 'info' ? (
+            {intervalInvalid && tab === 'info' && (
+                <p role="alert" className="pb-3 text-lg font-bold text-accent">
+                    ✕ 点検の周期は 1〜120 か月の整数で入力してください。
+                </p>
+            )}
+            {inactive ? (
+                isAdmin ? (
+                    <Button
+                        className="w-full"
+                        disabled={saving}
+                        onClick={() =>
+                            ask({ text: `${tool.name} を元に戻しますか？`, yesText: '元に戻す', action: restore })
+                        }
+                    >
+                        {saving ? '処理中...' : 'この工具を元に戻す（再び貸し出せるようにする）'}
+                    </Button>
+                ) : null
+            ) : tab === 'info' ? (
+                <div className="flex flex-wrap gap-4">
                 <Button
-                    className="w-full"
-                    disabled={saving || changedFields.length === 0 || (isAdmin && !form.name.trim())}
+                    className="min-w-64 flex-1"
+                    disabled={saving || changedFields.length === 0 || intervalInvalid || (isAdmin && !form.name.trim())}
                     onClick={() =>
                         ask({
                             text: `${changedFields.join('・')} を更新しますか？`,
@@ -634,6 +729,24 @@ const DetailModal = ({ isOpen, setIsOpen, toolId, categories = [], onUpdated }) 
                 >
                     {saving ? '更新中...' : changedFields.length === 0 ? '変更はありません' : '変更を保存する'}
                 </Button>
+                {isAdmin && (
+                    <Button
+                        variant="danger"
+                        disabled={saving || tool.isRented}
+                        // 押せない理由を色や淡さだけでなく文字でも伝える
+                        title={tool.isRented ? '貸出中のため無効化できません' : undefined}
+                        onClick={() =>
+                            ask({
+                                text: `${tool.name} を無効化しますか？（一覧から外れ、予約は取り消されます。履歴は残ります）`,
+                                yesText: '無効化する',
+                                action: deactivate,
+                            })
+                        }
+                    >
+                        無効化
+                    </Button>
+                )}
+                </div>
             ) : (
                 <Button
                     className="w-full"
@@ -674,6 +787,11 @@ const DetailModal = ({ isOpen, setIsOpen, toolId, categories = [], onUpdated }) 
                     </p>
                 ) : (
                     <>
+                        {inactive && (
+                            <p role="status" className="mb-4 rounded-xl border-2 border-dashed border-sub bg-field p-4 text-lg font-extrabold">
+                                この工具は無効化されています。貸出・予約・編集はできません（履歴は見られます）。
+                            </p>
+                        )}
                         <Segmented
                             label="表示する内容"
                             options={TABS}

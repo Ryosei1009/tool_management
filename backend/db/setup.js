@@ -19,11 +19,27 @@ const ADDED_COLUMNS = [
     { table: 'rentals', column: 'taken_at', definition: 'DATETIME NULL AFTER status' },
     { table: 'rentals', column: 'taken_by', definition: 'VARCHAR(32) NULL AFTER taken_at' },
     { table: 'rentals', column: 'returned_by', definition: 'VARCHAR(32) NULL AFTER returned_at' },
+    { table: 'employees', column: 'must_change_password', definition: 'TINYINT(1) NOT NULL DEFAULT 0 AFTER password_hash' },
+    { table: 'employees', column: 'failed_logins', definition: 'INT NOT NULL DEFAULT 0 AFTER must_change_password' },
+    { table: 'employees', column: 'locked_until', definition: 'DATETIME NULL AFTER failed_logins' },
+    { table: 'employees', column: 'token_version', definition: 'INT NOT NULL DEFAULT 0 AFTER locked_until' },
+    { table: 'employees', column: 'active', definition: 'TINYINT(1) NOT NULL DEFAULT 1 AFTER token_version' },
+    { table: 'employees', column: 'deactivated_at', definition: 'DATETIME NULL AFTER active' },
+    { table: 'tools', column: 'inspection_interval_months', definition: 'INT NULL AFTER last_inspection_date' },
+    { table: 'tools', column: 'active', definition: 'TINYINT(1) NOT NULL DEFAULT 1 AFTER inspection_interval_months' },
+    { table: 'tools', column: 'deactivated_at', definition: 'DATETIME NULL AFTER active' },
 ];
 
 // 列の定義を変えたもの。現在の定義と違うときだけ MODIFY する。
 // before は MODIFY の前に流す SQL（なくなる値を移し替えるなど）。
 const MODIFIED_COLUMNS = [
+    {
+        // 権限に「班長」を追加
+        table: 'employees',
+        column: 'permission',
+        type: "enum('管理者','班長','一般')",
+        definition: "ENUM('管理者','班長','一般') NOT NULL DEFAULT '一般'",
+    },
     {
         // 状態から「破損」をなくした。破損だった工具は「不良」にする。
         table: 'tools',

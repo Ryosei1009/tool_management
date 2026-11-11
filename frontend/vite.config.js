@@ -5,12 +5,16 @@ import tailwindcss from '@tailwindcss/vite'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // https://vite.dev/config/
-export default defineConfig({
+// `npm run dev:http`（--mode http）のときは HTTPS にしない。
+// 自己署名の証明書を受け付けない環境（自動テスト用のブラウザなど）で画面を確認するためのもの。
+// カメラ（QR の読み取り）は HTTPS か localhost でしか使えないので、普段は `npm run dev` を使う。
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     tailwindcss(),
     babel({ presets: [reactCompilerPreset()] }),
-    basicSsl(), // HTTPS化：iPad等でカメラ（getUserMedia）を使えるようにする
+    // HTTPS化：iPad等でカメラ（getUserMedia）を使えるようにする
+    ...(mode === 'http' ? [] : [basicSsl()]),
   ],
   server: {
     host: true, // LAN内の他端末（iPad等）からアクセス可能にする
@@ -30,4 +34,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))
