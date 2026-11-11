@@ -3,6 +3,7 @@
 - `frontend/` … React + Vite の画面
 - `backend/` … Express + MySQL の API（詳細は [backend/README.md](backend/README.md)）
 - `docs/operations.md` … 本番の設置・バックアップ・復旧の手順（[docs/operations.md](docs/operations.md)）
+- `docs/vps.md` … shinoryo.com の VPS での動かし方（`compose.vps.yaml`、`toolapi.shinoryo.com`）（[docs/vps.md](docs/vps.md)）
 - `docker-compose.yml` … 画面 + API + MySQL をまとめて動かす構成
 
 ## ローカルでの起動

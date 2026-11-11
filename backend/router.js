@@ -3,11 +3,11 @@ const fs = require('fs');
 const path = require('path');
 const { accessLog } = require('./utils/accessLog');
 
-// 既存の API サーバー（Portfolio の api）に組み込めるよう、
-// 工具管理の API を 1 つの Router にまとめる（フロントは Vercel で配信）。
+// 工具管理の API を 1 つの Router にまとめる。
+// 単体起動（index.js）では api だけを使う（本番もこちら。docs/vps.md）。
+// ほかの Express のサーバーに組み込むときは
 //   app.use('/tool', require('<このリポジトリ>/backend/router'));
-// とすると /tool/api/... が API になる。
-// 単体起動（index.js）では api だけを使う。
+// とすると /tool/api/... が API になる（2026/11 までは Portfolio の API にこの形で組み込んでいた）。
 
 const imagesDir = path.join(__dirname, 'images');
 if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });

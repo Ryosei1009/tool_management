@@ -1,0 +1,10 @@
+# /srv/infra/caddy/Caddyfile の末尾に追加する部分（工具管理の API）
+toolapi.shinoryo.com {
+	import cloudflare_tls
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy 127.0.0.1:4000 {
+		# 本当の接続元 IP（Cloudflare の CF-Connecting-IP）で上書きして渡す
+		header_up X-Forwarded-For {client_ip}
+	}
+}
